@@ -39,6 +39,11 @@ class Migrator
                 self::execSqlBatch($pdo, $fixLoginSql);
             }
 
+            $fixAuthSql = @file_get_contents(APP_ROOT . '/database/updates/fix_authentication_and_login.sql');
+            if ($fixAuthSql !== false) {
+                self::execSqlBatch($pdo, $fixAuthSql);
+            }
+
             // Only seed defaults for brand-new databases where settings table is empty
             $settingsCount = (int) $pdo->query('SELECT COUNT(*) FROM settings')->fetchColumn();
             if ($settingsCount === 0) {
