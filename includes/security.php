@@ -109,8 +109,8 @@ function send_security_headers(): void
     
     // Content Security Policy compatible with Tailwind, Alpine, Chart.js, Razorpay checkout, Google Fonts
     $csp = "default-src 'self' https:; "
-         . "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://checkout.razorpay.com https://api.razorpay.com https://*.razorpay.com; "
-         . "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://*.razorpay.com; "
+         . "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdn.tailwindcss.com https://checkout.razorpay.com https://api.razorpay.com https://*.razorpay.com; "
+         . "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdn.tailwindcss.com https://*.razorpay.com; "
          . "font-src 'self' https://fonts.gstatic.com data:; "
          . "img-src 'self' data: https: https://*.razorpay.com; "
          . "connect-src 'self' https://api.razorpay.com https://*.razorpay.com https://open.er-api.com https://v6.exchangerate-api.com;";

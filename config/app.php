@@ -23,11 +23,7 @@ if (!function_exists('app_base_url')) {
 if (!function_exists('app_root_prefix')) {
     function app_root_prefix(): string
     {
-        if (defined('APP_SUBDIR_PREFIX')) {
-            return (string) APP_SUBDIR_PREFIX;
-        }
-        $script = $_SERVER['SCRIPT_NAME'] ?? '';
-        return preg_match('#/(admin|user|api|install|cron|tools)/#', $script) ? '../' : '';
+        return '/';
     }
 }
 
