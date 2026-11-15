@@ -8,10 +8,7 @@ function e(?string $value): string
 
 function redirect(string $path): never
 {
-    if (ob_get_level() > 0) {
-        @ob_clean();
-    }
-    header('Location: ' . $path, true, 302);
+    header('Location: ' . $path);
     exit;
 }
 
@@ -320,6 +317,3 @@ function payment_status_badge(string $status): string
     $cfg = $map[$status] ?? ['bg' => 'bg-slate-100 text-slate-700 border-slate-200', 'label' => ucfirst($status)];
     return '<span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium border ' . $cfg['bg'] . '">' . e($cfg['label']) . '</span>';
 }
-
-
-

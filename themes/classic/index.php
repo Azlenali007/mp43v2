@@ -33,7 +33,6 @@ ob_start();
             Browse Services
           </a>
         <?php endif; ?>
-
       </div>
 
       <div class="grid grid-cols-3 gap-6 pt-6 border-t border-slate-200 max-w-lg">

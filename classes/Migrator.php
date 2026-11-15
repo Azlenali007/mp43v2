@@ -17,8 +17,6 @@ class Migrator
                 self::execSqlBatch($pdo, $schemaSql);
             }
 
-
-
             self::ensureCoreColumns($pdo);
 
             $mig002 = @file_get_contents(APP_ROOT . '/database/migrations/002_stability_and_theme_fixes.sql');
@@ -29,21 +27,6 @@ class Migrator
             $mig003 = @file_get_contents(APP_ROOT . '/database/migrations/003_security_hardening.sql');
             if ($mig003 !== false) {
                 self::execSqlBatch($pdo, $mig003);
-            }
-
-            $fixLoginSql = @file_get_contents(APP_ROOT . '/database/updates/fix_login_system.sql');
-            if ($fixLoginSql !== false) {
-                self::execSqlBatch($pdo, $fixLoginSql);
-            }
-
-            $fixAuthSql = @file_get_contents(APP_ROOT . '/database/updates/fix_authentication_and_login.sql');
-            if ($fixAuthSql !== false) {
-                self::execSqlBatch($pdo, $fixAuthSql);
-            }
-
-            $removeOtpSql = @file_get_contents(APP_ROOT . '/database/updates/remove_otp_completely.sql');
-            if ($removeOtpSql !== false) {
-                self::execSqlBatch($pdo, $removeOtpSql);
             }
 
             // Only seed defaults for brand-new databases where settings table is empty

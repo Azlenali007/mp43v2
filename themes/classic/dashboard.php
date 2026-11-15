@@ -28,8 +28,6 @@ ob_start();
     </div>
   </div>
 
-
-
   <!-- 4 Glass KPI Cards -->
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
     <div class="glass-kpi-card rounded-2xl p-5 flex items-center gap-4">
