@@ -9,38 +9,67 @@ $userId = (int) $user['id'];
 $range = ($_GET['range'] ?? '7d') === '30d' ? '30d' : '7d';
 $days = $range === '30d' ? 30 : 7;
 
-$statsStmt = $pdo->prepare(
-    'SELECT
-        COUNT(*) AS total_orders,
-        SUM(CASE WHEN status = "completed" THEN 1 ELSE 0 END) AS completed_orders,
-        SUM(CASE WHEN status IN ("pending","processing","in_progress") THEN 1 ELSE 0 END) AS pending_orders,
-        SUM(CASE WHEN status IN ("cancelled","failed","refunded") THEN 1 ELSE 0 END) AS cancelled_orders,
-        SUM(CASE WHEN status IN ("processing","in_progress") THEN 1 ELSE 0 END) AS processing_orders,
-        SUM(CASE WHEN status = "pending" THEN 1 ELSE 0 END) AS strictly_pending
-     FROM orders
-     WHERE user_id = ?'
-);
-$statsStmt->execute([$userId]);
-$stats = $statsStmt->fetch() ?: [];
-
-$totalOrders = (int) ($stats['total_orders'] ?? 0);
-$completedOrders = (int) ($stats['completed_orders'] ?? 0);
-$pendingOrders = (int) ($stats['pending_orders'] ?? 0);
-$processingCount = (int) ($stats['processing_orders'] ?? 0);
-$strictlyPending = (int) ($stats['strictly_pending'] ?? 0);
-$cancelledCount = (int) ($stats['cancelled_orders'] ?? 0);
-
-$chartStmt = $pdo->prepare(
-    'SELECT DATE(created_at) AS day_date, COALESCE(SUM(charge), 0) AS total_spend
-     FROM orders
-     WHERE user_id = ? AND created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-     GROUP BY DATE(created_at)
-     ORDER BY day_date ASC'
-);
-$chartStmt->execute([$userId, $days - 1]);
+$totalOrders = 0;
+$completedOrders = 0;
+$pendingOrders = 0;
+$processingCount = 0;
+$strictlyPending = 0;
+$cancelledCount = 0;
 $rawChart = [];
-foreach ($chartStmt->fetchAll() as $r) {
-    $rawChart[$r['day_date']] = (float) $r['total_spend'];
+$recentOrders = [];
+$announcements = [];
+
+try {
+    $statsStmt = $pdo->prepare(
+        'SELECT
+            COUNT(*) AS total_orders,
+            SUM(CASE WHEN status = "completed" THEN 1 ELSE 0 END) AS completed_orders,
+            SUM(CASE WHEN status IN ("pending","processing","in_progress") THEN 1 ELSE 0 END) AS pending_orders,
+            SUM(CASE WHEN status IN ("cancelled","failed","refunded") THEN 1 ELSE 0 END) AS cancelled_orders,
+            SUM(CASE WHEN status IN ("processing","in_progress") THEN 1 ELSE 0 END) AS processing_orders,
+            SUM(CASE WHEN status = "pending" THEN 1 ELSE 0 END) AS strictly_pending
+         FROM orders
+         WHERE user_id = ?'
+    );
+    $statsStmt->execute([$userId]);
+    $stats = $statsStmt->fetch() ?: [];
+
+    $totalOrders = (int) ($stats['total_orders'] ?? 0);
+    $completedOrders = (int) ($stats['completed_orders'] ?? 0);
+    $pendingOrders = (int) ($stats['pending_orders'] ?? 0);
+    $processingCount = (int) ($stats['processing_orders'] ?? 0);
+    $strictlyPending = (int) ($stats['strictly_pending'] ?? 0);
+    $cancelledCount = (int) ($stats['cancelled_orders'] ?? 0);
+
+    $chartStmt = $pdo->prepare(
+        'SELECT DATE(created_at) AS day_date, COALESCE(SUM(charge), 0) AS total_spend
+         FROM orders
+         WHERE user_id = ? AND created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+         GROUP BY DATE(created_at)
+         ORDER BY day_date ASC'
+    );
+    $chartStmt->execute([$userId, $days - 1]);
+    foreach ($chartStmt->fetchAll() as $r) {
+        $rawChart[$r['day_date']] = (float) $r['total_spend'];
+    }
+
+    $recentStmt = $pdo->prepare(
+        'SELECT o.*, s.name AS service_name, s.icon_key AS service_icon, c.icon_key AS category_icon
+         FROM orders o
+         INNER JOIN services s ON s.id = o.service_id
+         INNER JOIN categories c ON c.id = s.category_id
+         WHERE o.user_id = ?
+         ORDER BY o.created_at DESC
+         LIMIT 5'
+    );
+    $recentStmt->execute([$userId]);
+    $recentOrders = $recentStmt->fetchAll();
+
+    $announcements = $pdo->query(
+        'SELECT * FROM announcements WHERE is_active = 1 ORDER BY created_at DESC LIMIT 4'
+    )->fetchAll();
+} catch (Throwable $e) {
+    write_app_log('app', 'Dashboard query warning: ' . $e->getMessage());
 }
 
 $displayCurrency = Currency::getUserDisplay($user);
@@ -54,22 +83,6 @@ for ($i = $days - 1; $i >= 0; $i--) {
     $seriesLabels[] = $days === 7 ? date('D', strtotime($d)) : date('d M', strtotime($d));
     $seriesValues[] = Currency::convertFromBase($rawChart[$d] ?? 0.0, $displayCode, $displayDecimals);
 }
-
-$recentStmt = $pdo->prepare(
-    'SELECT o.*, s.name AS service_name, s.icon_key AS service_icon, c.icon_key AS category_icon
-     FROM orders o
-     INNER JOIN services s ON s.id = o.service_id
-     INNER JOIN categories c ON c.id = s.category_id
-     WHERE o.user_id = ?
-     ORDER BY o.created_at DESC
-     LIMIT 5'
-);
-$recentStmt->execute([$userId]);
-$recentOrders = $recentStmt->fetchAll();
-
-$announcements = $pdo->query(
-    'SELECT * FROM announcements WHERE is_active = 1 ORDER BY created_at DESC LIMIT 4'
-)->fetchAll();
 
 $currencySymbol = (string) ($displayCurrency['symbol'] ?? get_setting('currency_symbol', '₹'));
 

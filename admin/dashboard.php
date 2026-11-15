@@ -5,36 +5,69 @@ $admin = require_admin();
 
 $pdo = Database::getConnection();
 
-$totalUsers = (int) $pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
-$totalServices = (int) $pdo->query('SELECT COUNT(*) FROM services')->fetchColumn();
-$totalCategories = (int) $pdo->query('SELECT COUNT(*) FROM categories')->fetchColumn();
+$totalUsers = 0;
+$totalServices = 0;
+$totalCategories = 0;
+$totalOrders = 0;
+$pendingOrders = 0;
+$totalRevenue = 0.0;
+$totalProfit = 0.0;
+$pendingManualPayments = 0;
+$salesRows = [];
+$recentTransactions = [];
+$recentOrders = [];
 
-$orderAgg = $pdo->query(
-    'SELECT
-        COUNT(*) AS total_orders,
-        SUM(CASE WHEN status IN ("pending","processing","in_progress") THEN 1 ELSE 0 END) AS pending_orders,
-        SUM(CASE WHEN status = "completed" THEN 1 ELSE 0 END) AS completed_orders,
-        SUM(CASE WHEN status IN ("processing","in_progress") THEN 1 ELSE 0 END) AS processing_orders,
-        SUM(CASE WHEN status = "pending" THEN 1 ELSE 0 END) AS strictly_pending,
-        SUM(CASE WHEN status IN ("cancelled","failed","refunded") THEN 1 ELSE 0 END) AS cancelled_orders,
-        COALESCE(SUM(CASE WHEN status NOT IN ("cancelled","failed","refunded") THEN charge ELSE 0 END), 0) AS total_revenue,
-        COALESCE(SUM(CASE WHEN status NOT IN ("cancelled","failed","refunded") THEN profit ELSE 0 END), 0) AS total_profit
-     FROM orders'
-)->fetch() ?: [];
+try {
+    $totalUsers = (int) $pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
+    $totalServices = (int) $pdo->query('SELECT COUNT(*) FROM services')->fetchColumn();
+    $totalCategories = (int) $pdo->query('SELECT COUNT(*) FROM categories')->fetchColumn();
 
-$totalOrders = (int) ($orderAgg['total_orders'] ?? 0);
-$pendingOrders = (int) ($orderAgg['pending_orders'] ?? 0);
-$totalRevenue = (float) ($orderAgg['total_revenue'] ?? 0);
-$totalProfit = (float) ($orderAgg['total_profit'] ?? 0);
-$pendingManualPayments = (int) $pdo->query('SELECT COUNT(*) FROM payments WHERE method_code = "manual" AND status = "pending"')->fetchColumn();
+    $orderAgg = $pdo->query(
+        'SELECT
+            COUNT(*) AS total_orders,
+            SUM(CASE WHEN status IN ("pending","processing","in_progress") THEN 1 ELSE 0 END) AS pending_orders,
+            SUM(CASE WHEN status = "completed" THEN 1 ELSE 0 END) AS completed_orders,
+            SUM(CASE WHEN status IN ("processing","in_progress") THEN 1 ELSE 0 END) AS processing_orders,
+            SUM(CASE WHEN status = "pending" THEN 1 ELSE 0 END) AS strictly_pending,
+            SUM(CASE WHEN status IN ("cancelled","failed","refunded") THEN 1 ELSE 0 END) AS cancelled_orders,
+            COALESCE(SUM(CASE WHEN status NOT IN ("cancelled","failed","refunded") THEN charge ELSE 0 END), 0) AS total_revenue,
+            COALESCE(SUM(CASE WHEN status NOT IN ("cancelled","failed","refunded") THEN profit ELSE 0 END), 0) AS total_profit
+         FROM orders'
+    )->fetch() ?: [];
 
-// Real 7-day sales analytics
-$salesRows = $pdo->query(
-    'SELECT DATE(created_at) AS d, COALESCE(SUM(charge), 0) AS rev
-     FROM orders
-     WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND status NOT IN ("cancelled","failed","refunded")
-     GROUP BY DATE(created_at)'
-)->fetchAll();
+    $totalOrders = (int) ($orderAgg['total_orders'] ?? 0);
+    $pendingOrders = (int) ($orderAgg['pending_orders'] ?? 0);
+    $totalRevenue = (float) ($orderAgg['total_revenue'] ?? 0);
+    $totalProfit = (float) ($orderAgg['total_profit'] ?? 0);
+    $pendingManualPayments = (int) $pdo->query('SELECT COUNT(*) FROM payments WHERE method_code = "manual" AND status = "pending"')->fetchColumn();
+
+    $salesRows = $pdo->query(
+        'SELECT DATE(created_at) AS d, COALESCE(SUM(charge), 0) AS rev
+         FROM orders
+         WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND status NOT IN ("cancelled","failed","refunded")
+         GROUP BY DATE(created_at)'
+    )->fetchAll();
+
+    $recentTransactions = $pdo->query(
+        'SELECT wt.*, u.name AS user_name, u.email AS user_email
+         FROM wallet_transactions wt
+         INNER JOIN users u ON u.id = wt.user_id
+         ORDER BY wt.created_at DESC, wt.id DESC
+         LIMIT 6'
+    )->fetchAll();
+
+    $recentOrders = $pdo->query(
+        'SELECT o.*, u.username, s.name AS service_name
+         FROM orders o
+         INNER JOIN users u ON u.id = o.user_id
+         INNER JOIN services s ON s.id = o.service_id
+         ORDER BY o.created_at DESC
+         LIMIT 6'
+    )->fetchAll();
+} catch (Throwable $e) {
+    write_app_log('app', 'Admin dashboard query warning: ' . $e->getMessage());
+}
+
 $byDay = [];
 foreach ($salesRows as $r) {
     $byDay[$r['d']] = (float) $r['rev'];
@@ -46,23 +79,6 @@ for ($i = 6; $i >= 0; $i--) {
     $labels[] = date('D', strtotime($d));
     $values[] = round($byDay[$d] ?? 0.0, 2);
 }
-
-$recentTransactions = $pdo->query(
-    'SELECT wt.*, u.name AS user_name, u.email AS user_email
-     FROM wallet_transactions wt
-     INNER JOIN users u ON u.id = wt.user_id
-     ORDER BY wt.created_at DESC, wt.id DESC
-     LIMIT 6'
-)->fetchAll();
-
-$recentOrders = $pdo->query(
-    'SELECT o.*, u.username, s.name AS service_name
-     FROM orders o
-     INNER JOIN users u ON u.id = o.user_id
-     INNER JOIN services s ON s.id = o.service_id
-     ORDER BY o.created_at DESC
-     LIMIT 6'
-)->fetchAll();
 
 $currencySymbol = get_setting('currency_symbol', '₹');
 $pageTitle = 'Admin Dashboard';
@@ -124,54 +140,45 @@ require __DIR__ . '/../includes/admin-header.php';
     </div>
   </div>
 
-  <!-- Secondary Metrics -->
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-    <a href="services.php" class="bg-white border border-slate-200 rounded-2xl p-4 hover:border-[#7138D8] transition">
-      <p class="text-xs text-slate-500">Total Services</p>
-      <p class="text-xl font-bold text-[#151515] font-mono-num mt-1"><?= number_format($totalServices) ?></p>
-    </a>
-    <a href="categories.php" class="bg-white border border-slate-200 rounded-2xl p-4 hover:border-[#7138D8] transition">
-      <p class="text-xs text-slate-500">Total Categories</p>
-      <p class="text-xl font-bold text-[#151515] font-mono-num mt-1"><?= number_format($totalCategories) ?></p>
-    </a>
-    <a href="orders.php?status=pending" class="bg-white border border-slate-200 rounded-2xl p-4 hover:border-[#7138D8] transition">
-      <p class="text-xs text-slate-500">Pending / Active Orders</p>
-      <p class="text-xl font-bold text-amber-600 font-mono-num mt-1"><?= number_format($pendingOrders) ?></p>
-    </a>
-    <a href="payments.php?status=pending" class="bg-white border border-slate-200 rounded-2xl p-4 hover:border-[#7138D8] transition">
-      <p class="text-xs text-slate-500">Pending Manual Payments</p>
-      <p class="text-xl font-bold text-[#7138D8] font-mono-num mt-1"><?= number_format($pendingManualPayments) ?></p>
-    </a>
-  </div>
-
-  <!-- Sales Analytics & Order Status Breakdown -->
+  <!-- Charts & Tables -->
   <div class="grid lg:grid-cols-12 gap-6">
-    <div class="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-6">
+    <div class="lg:col-span-8 bg-white border border-slate-200 rounded-2xl p-6">
       <div class="flex items-center justify-between mb-4">
-        <h2 class="text-base font-bold text-[#151515]">Sales Analytics (Last 7 Days)</h2>
-        <a href="reports.php" class="text-xs font-semibold text-[#7138D8] hover:underline">Full Reports &rarr;</a>
+        <h2 class="text-base font-bold text-[#151515]">7-Day Revenue Analytics</h2>
+        <span class="text-xs text-slate-500">Live Completed Orders</span>
       </div>
-      <div class="h-64">
-        <canvas id="salesOverviewChart"></canvas>
+      <div class="h-72">
+        <canvas id="adminRevenueChart"></canvas>
       </div>
     </div>
 
-    <div class="lg:col-span-5 bg-white border border-slate-200 rounded-2xl p-6 flex flex-col justify-between">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-base font-bold text-[#151515]">Order Status Distribution</h2>
-        <a href="orders.php" class="text-xs font-semibold text-[#7138D8] hover:underline">Manage &rarr;</a>
-      </div>
-      <div class="relative h-52 flex items-center justify-center">
-        <canvas id="orderStatusChart"></canvas>
-        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span class="text-2xl font-bold text-[#151515] font-mono-num"><?= number_format($totalOrders) ?></span>
-          <span class="text-[11px] text-slate-500">Orders</span>
+    <div class="lg:col-span-4 bg-white border border-slate-200 rounded-2xl p-6 flex flex-col justify-between">
+      <div>
+        <h2 class="text-base font-bold text-[#151515] mb-4">Quick Statistics</h2>
+        <div class="space-y-4 text-sm">
+          <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50">
+            <span class="text-slate-600 font-medium">Pending Orders</span>
+            <span class="font-bold text-amber-600 font-mono-num"><?= number_format($pendingOrders) ?></span>
+          </div>
+          <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50">
+            <span class="text-slate-600 font-medium">Manual Payments Pending</span>
+            <span class="font-bold text-[#7138D8] font-mono-num"><?= number_format($pendingManualPayments) ?></span>
+          </div>
+          <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50">
+            <span class="text-slate-600 font-medium">Total Services</span>
+            <span class="font-bold text-[#151515] font-mono-num"><?= number_format($totalServices) ?></span>
+          </div>
         </div>
       </div>
+      <div class="pt-4">
+        <a href="orders.php?status=pending" class="block w-full py-3 text-center rounded-xl bg-[#7138D8] text-white text-xs font-semibold hover:bg-[#5B24C0] transition shadow-sm">
+          Review Pending Orders
+        </a>
+      </div>
     </div>
   </div>
 
-  <!-- Recent Orders & Recent Transactions -->
+  <!-- Recent Transactions & Orders -->
   <div class="grid lg:grid-cols-12 gap-6">
     <div class="lg:col-span-6 bg-white border border-slate-200 rounded-2xl p-6">
       <div class="flex items-center justify-between mb-4">
@@ -179,20 +186,18 @@ require __DIR__ . '/../includes/admin-header.php';
         <a href="orders.php" class="text-xs font-semibold text-[#7138D8] hover:underline">View All &rarr;</a>
       </div>
       <?php if (empty($recentOrders)): ?>
-        <p class="text-sm text-slate-500 py-6 text-center">No orders recorded yet.</p>
+        <p class="text-sm text-slate-500 py-6 text-center">No orders found.</p>
       <?php else: ?>
         <div class="divide-y divide-slate-100 text-xs">
-          <?php foreach ($recentOrders as $o): ?>
+          <?php foreach ($recentOrders as $ro): ?>
             <div class="py-3 flex items-center justify-between gap-3">
               <div class="min-w-0">
-                <a href="order-details.php?id=<?= (int) $o['id'] ?>" class="font-mono-num font-bold text-[#7138D8] hover:underline">#<?= e($o['order_code']) ?></a>
-                <span class="text-slate-400 mx-1">·</span>
-                <span class="font-medium text-[#151515]"><?= e($o['username']) ?></span>
-                <p class="text-slate-500 truncate mt-0.5"><?= e($o['service_name']) ?></p>
+                <p class="font-semibold text-[#151515]">#<?= e($ro['order_code']) ?> — <?= e($ro['username']) ?></p>
+                <p class="text-slate-500 truncate mt-0.5"><?= e($ro['service_name']) ?></p>
               </div>
               <div class="text-right shrink-0">
-                <p class="font-mono-num font-bold text-[#151515]"><?= e(format_currency($o['charge'])) ?></p>
-                <div class="mt-1"><?= order_status_badge($o['status']) ?></div>
+                <p class="font-mono-num font-bold text-[#151515]"><?= e(format_currency($ro['charge'])) ?></p>
+                <p class="mt-0.5"><?= order_status_badge($ro['status']) ?></p>
               </div>
             </div>
           <?php endforeach; ?>
