@@ -18,28 +18,29 @@ $adminInitials = strtoupper(substr($admin['name'] ?? 'AD', 0, 2));
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="../assets/css/style.css">
-  <link rel="stylesheet" href="../assets/css/custom.css">
-</head>
-<body class="bg-[#F8F9FC] text-[#151515] min-h-screen" x-data="{ mobileMenuOpen: false }">
-  <div class="min-h-screen flex">
-    <?php require __DIR__ . '/admin-sidebar.php'; ?>
-
-    <div class="flex-1 flex flex-col min-w-0">
-      <header class="h-16 bg-white border-b border-slate-200 px-4 lg:px-8 flex items-center justify-between gap-4 sticky top-0 z-30">
-        <div class="flex items-center gap-3">
-          <button type="button" @click="mobileMenuOpen = true" class="lg:hidden p-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50" aria-label="Open Menu">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-          </button>
-          <div>
-            <h1 class="text-base sm:text-lg font-bold text-[#151515]"><?= e($pageTitle ?? 'Dashboard') ?></h1>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-3 shrink-0">
-          <a href="../index.php" target="_blank" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-            View Site
-          </a>
+   <?php $rp = app_root_prefix(); ?>
+   <link rel="stylesheet" href="<?= e($rp) ?>assets/css/style.css">
+   <link rel="stylesheet" href="<?= e($rp) ?>assets/css/custom.css">
+ </head>
+ <body class="bg-[#F8F9FC] text-[#151515] min-h-screen" x-data="{ mobileMenuOpen: false }">
+   <div class="min-h-screen flex">
+     <?php require __DIR__ . '/admin-sidebar.php'; ?>
+ 
+     <div class="flex-1 flex flex-col min-w-0">
+       <header class="h-16 bg-white border-b border-slate-200 px-4 lg:px-8 flex items-center justify-between gap-4 sticky top-0 z-30">
+         <div class="flex items-center gap-3">
+           <button type="button" @click="mobileMenuOpen = true" class="lg:hidden p-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50" aria-label="Open Menu">
+             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+           </button>
+           <div>
+             <h1 class="text-base sm:text-lg font-bold text-[#151515]"><?= e($pageTitle ?? 'Dashboard') ?></h1>
+           </div>
+         </div>
+ 
+         <div class="flex items-center gap-3 shrink-0">
+           <a href="<?= e($rp) ?>" target="_blank" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+             View Site
+           </a>
           <div class="relative" x-data="{ open: false }">
             <button type="button" @click="open = !open" class="flex items-center gap-2.5 pl-1.5 pr-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50">
               <span class="w-8 h-8 rounded-lg bg-[#7138D8] text-white text-xs font-bold flex items-center justify-center"><?= e($adminInitials) ?></span>

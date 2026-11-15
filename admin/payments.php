@@ -89,7 +89,7 @@ require __DIR__ . '/../includes/admin-header.php';
               <td class="py-3 px-3 font-mono-num">
                 <?= e($p['razorpay_payment_id'] ?: ($p['utr_reference'] ?: '—')) ?>
                 <?php if (!empty($p['screenshot_path'])): ?>
-                  <a href="../<?= e($p['screenshot_path']) ?>" target="_blank" class="block text-[#7138D8] font-sans font-semibold hover:underline mt-0.5">View Screenshot</a>
+                  <a href="<?= e(app_root_prefix() . $p['screenshot_path']) ?>" target="_blank" class="block text-[#7138D8] font-sans font-semibold hover:underline mt-0.5">View Screenshot</a>
                 <?php endif; ?>
               </td>
               <td class="py-3 px-3 text-right font-mono-num">

@@ -40,7 +40,7 @@ $siteName = get_setting('site_name', 'CrownSMM');
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../assets/css/style.css">
+  <link rel="stylesheet" href="<?= e(app_root_prefix()) ?>assets/css/style.css">
 </head>
 <body class="bg-[#151515] min-h-screen flex items-center justify-center p-4">
   <div class="max-w-md w-full bg-white rounded-2xl p-8 shadow-2xl border border-slate-200">
