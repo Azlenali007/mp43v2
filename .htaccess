@@ -3,10 +3,16 @@ ServerSignature Off
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    RewriteBase /
 
     # Block direct web access to sensitive folders and files
     RewriteRule ^(config|database|storage|classes|includes)/ - [F,L]
-    RewriteRule ^(\.env|composer\.|package\.json|README\.md) - [F,L]
+    RewriteRule ^(\.env|composer\.|package\.json|README\.md|\.git) - [F,L]
+
+    # If the request is not for a real file or directory, route through router.php
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ router.php [QSA,L]
 </IfModule>
 
 <FilesMatch "\.(sql|log|lock|ini|sh)$">

@@ -11,7 +11,9 @@ require_once __DIR__ . '/icons.php';
 require_once __DIR__ . '/../classes/Currency.php';
 require_once __DIR__ . '/../classes/Theme.php';
 require_once __DIR__ . '/../classes/Tools.php';
+require_once __DIR__ . '/security.php';
 
+send_security_headers();
 register_app_error_handlers();
 
 function ensure_installed(): void

@@ -20,6 +20,7 @@ $adminNav = [
     ['href' => 'settings.php', 'label' => 'Settings'],
     ['href' => 'admins.php', 'label' => 'Admins & Roles'],
     ['href' => 'activity-logs.php', 'label' => 'Activity Logs'],
+    ['href' => 'security.php', 'label' => 'Security & Abuse'],
     ['href' => 'backup.php', 'label' => 'Database Backup'],
 ];
 ?>

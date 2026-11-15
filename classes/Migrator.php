@@ -24,6 +24,11 @@ class Migrator
                 self::execSqlBatch($pdo, $mig002);
             }
 
+            $mig003 = @file_get_contents(APP_ROOT . '/database/migrations/003_security_hardening.sql');
+            if ($mig003 !== false) {
+                self::execSqlBatch($pdo, $mig003);
+            }
+
             // Only seed defaults for brand-new databases where settings table is empty
             $settingsCount = (int) $pdo->query('SELECT COUNT(*) FROM settings')->fetchColumn();
             if ($settingsCount === 0) {

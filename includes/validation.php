@@ -60,6 +60,9 @@ function validate_positive_int($value, int $min = 1, int $max = 100000000): ?int
 
 function check_rate_limit(string $bucket, int $maxAttempts = 10, int $windowSeconds = 300): bool
 {
+    if (function_exists('check_database_rate_limit')) {
+        return check_database_rate_limit($bucket, $maxAttempts, $windowSeconds);
+    }
     app_start_session();
     $key = '_rl_' . sha1($bucket . '|' . ($_SERVER['REMOTE_ADDR'] ?? 'cli'));
     $now = time();
