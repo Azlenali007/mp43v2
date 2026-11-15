@@ -7,6 +7,9 @@ require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/csrf.php';
 require_once __DIR__ . '/validation.php';
 require_once __DIR__ . '/icons.php';
+require_once __DIR__ . '/../classes/Currency.php';
+require_once __DIR__ . '/../classes/Theme.php';
+require_once __DIR__ . '/../classes/Tools.php';
 
 function ensure_installed(): void
 {

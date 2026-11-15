@@ -1,0 +1,8 @@
+/* Creator Tools Module Stylesheet */
+.tool-output-card {
+  transition: border-color 150ms ease, transform 150ms ease;
+}
+
+.tool-output-card:hover {
+  transform: translateY(-1px);
+}

@@ -47,15 +47,30 @@ class Payment
                 }
             }
 
+            $baseAmount = (float) ($payment['base_amount'] > 0 ? $payment['base_amount'] : $payment['amount']);
+            $baseCur = (string) ($payment['base_currency'] ?: Currency::getBaseCode());
+            $origAmt = (float) ($payment['original_amount'] > 0 ? $payment['original_amount'] : $baseAmount);
+            $origCur = (string) ($payment['original_currency'] ?: $baseCur);
+            $dispAmt = (float) ($payment['displayed_amount'] > 0 ? $payment['displayed_amount'] : $origAmt);
+            $dispCur = (string) ($payment['display_currency'] ?: $origCur);
+            $exRate = (float) ($payment['exchange_rate'] > 0 ? $payment['exchange_rate'] : 1.0);
+
             $credit = Wallet::credit(
                 (int) $payment['user_id'],
-                (float) $payment['amount'],
+                $baseAmount,
                 'payment',
                 $paymentId,
-                'Wallet top-up via ' . strtoupper($payment['method_code']) . ' (#' . $payment['payment_code'] . ')',
+                'Wallet top-up via ' . strtoupper($payment['method_code']) . ' (#' . $payment['payment_code'] . ' · ' . Currency::formatExact($origAmt, $origCur) . ')',
                 'payment_credit_' . $paymentId,
                 $adminId,
-                'credit'
+                'credit',
+                [
+                    'original_amount'   => $origAmt,
+                    'original_currency' => $origCur,
+                    'display_currency'  => $dispCur,
+                    'exchange_rate'     => $exRate,
+                    'displayed_amount'  => $dispAmt,
+                ]
             );
             if (!$credit['ok']) {
                 throw new RuntimeException($credit['error']);
@@ -85,7 +100,7 @@ class Payment
             create_notification(
                 (int) $payment['user_id'],
                 'Funds Credited',
-                format_currency((float) $payment['amount']) . ' has been added to your wallet (' . $payment['payment_code'] . ').',
+                Currency::formatExact($dispAmt, $dispCur) . ' (' . Currency::formatExact($baseAmount, $baseCur) . ') has been added to your wallet (' . $payment['payment_code'] . ').',
                 'success',
                 'transactions.php'
             );

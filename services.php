@@ -24,7 +24,7 @@ if ($user) {
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
     <div>
       <h1 class="text-2xl font-bold text-[#151515]">Services Catalog</h1>
-      <p class="text-sm text-slate-600 mt-1">Real-time rates per 1,000 units with minimum &amp; maximum order quantities.</p>
+      <p class="text-sm text-slate-600 mt-1">Real-time rates per 1,000 units in <strong><?= e(Currency::getUserDisplay($user)['code']) ?></strong> with minimum &amp; maximum order quantities.</p>
     </div>
     <?php if ($user): ?>
       <a href="new-order.php" class="px-5 py-2.5 rounded-xl bg-[#7138D8] text-white text-sm font-semibold hover:bg-[#5B24C0] transition whitespace-nowrap self-start">

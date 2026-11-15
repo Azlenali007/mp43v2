@@ -4,28 +4,32 @@ require_once __DIR__ . '/../includes/auth.php';
 $admin = require_admin('manage_providers');
 require_once __DIR__ . '/../classes/Provider.php';
 
+$currencies = Currency::all(false, false);
+$baseCode = Currency::getBaseCode();
 $error = '';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf_or_abort();
     $name = sanitize_string($_POST['name'] ?? '', 120);
     $apiUrl = trim((string) ($_POST['api_url'] ?? ''));
     $apiKey = trim((string) ($_POST['api_key'] ?? ''));
-    $currency = strtoupper(sanitize_string($_POST['currency'] ?? 'INR', 10));
+    $currency = strtoupper(sanitize_string($_POST['currency'] ?? $baseCode, 10));
 
     if ($name === '' || !filter_var($apiUrl, FILTER_VALIDATE_URL) || $apiKey === '') {
         $error = 'Provider name, valid API URL (https://...), and API key are required.';
     } else {
         $id = Provider::create([
-            'name'     => $name,
-            'api_url'  => $apiUrl,
-            'api_key'  => $apiKey,
-            'api_type' => 'standard',
-            'currency' => $currency ?: 'INR',
-            'status'   => $_POST['status'] ?? 'active',
-            'notes'    => sanitize_string($_POST['notes'] ?? '', 1000),
+            'name'            => $name,
+            'api_url'         => $apiUrl,
+            'api_key'         => $apiKey,
+            'api_type'        => 'standard',
+            'currency'        => $currency ?: $baseCode,
+            'currency_source' => 'manual',
+            'status'          => $_POST['status'] ?? 'active',
+            'notes'           => sanitize_string($_POST['notes'] ?? '', 1000),
         ]);
-        log_activity('admin', (int) $admin['id'], 'provider_created', 'provider', $id, $name);
-        set_flash('success', 'Provider added. Run "Test & Check Balance" to verify connectivity.');
+        log_activity('admin', (int) $admin['id'], 'provider_created', 'provider', $id, "{$name} ({$currency})");
+        set_flash('success', 'Provider added. Run "Test & Check Balance" to verify connectivity and currency.');
         redirect('providers.php');
     }
 }
@@ -56,7 +60,11 @@ require __DIR__ . '/../includes/admin-header.php';
     <div class="grid grid-cols-2 gap-4">
       <div>
         <label class="block text-xs font-semibold text-slate-700 mb-1">Provider Currency</label>
-        <input type="text" name="currency" value="INR" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm">
+        <select name="currency" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
+          <?php foreach ($currencies as $c): ?>
+            <option value="<?= e($c['code']) ?>" <?= $c['code'] === $baseCode ? 'selected' : '' ?>><?= e($c['code']) ?> — <?= e($c['name']) ?></option>
+          <?php endforeach; ?>
+        </select>
       </div>
       <div>
         <label class="block text-xs font-semibold text-slate-700 mb-1">Status</label>

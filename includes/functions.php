@@ -38,7 +38,7 @@ function get_flash(): ?array
     return null;
 }
 
-function get_setting(string $key, ?string $default = ''): string
+function app_settings_store(?string $updateKey = null, ?string $updateValue = null): array
 {
     static $cache = null;
     if ($cache === null) {
@@ -50,9 +50,18 @@ function get_setting(string $key, ?string $default = ''): string
                 $cache[$row['setting_key']] = (string) ($row['setting_value'] ?? '');
             }
         } catch (Throwable $e) {
-            return (string) $default;
+            return [];
         }
     }
+    if ($updateKey !== null) {
+        $cache[$updateKey] = (string) $updateValue;
+    }
+    return $cache;
+}
+
+function get_setting(string $key, ?string $default = ''): string
+{
+    $cache = app_settings_store();
     return $cache[$key] ?? (string) $default;
 }
 
@@ -64,14 +73,43 @@ function set_setting(string $key, string $value, string $group = 'general'): voi
          ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), setting_group = VALUES(setting_group)'
     );
     $stmt->execute([$key, $value, $group]);
+    app_settings_store($key, $value);
 }
 
-function format_currency(float|string $amount, ?string $symbol = null, int $decimals = 2): string
+function is_admin_context(): bool
 {
-    $sym = $symbol ?? get_setting('currency_symbol', '₹');
-    $val = (float) $amount;
-    $formatted = number_format($val, $decimals, '.', ',');
-    return $sym . $formatted;
+    $script = $_SERVER['SCRIPT_NAME'] ?? '';
+    return str_contains($script, '/admin/');
+}
+
+function format_currency(float|string $amount, ?string $currencyCode = null, ?int $decimals = null): string
+{
+    if (class_exists('Currency')) {
+        if ($currencyCode !== null) {
+            return Currency::formatBase($amount, $currencyCode, $decimals);
+        }
+        $target = is_admin_context() ? Currency::getBaseCode() : (string) Currency::getUserDisplay()['code'];
+        return Currency::formatBase($amount, $target, $decimals);
+    }
+    $sym = get_setting('currency_symbol', '₹');
+    $dec = $decimals ?? 2;
+    return $sym . number_format((float) $amount, $dec, '.', ',');
+}
+
+function format_base_currency(float|string $amount, ?int $decimals = null): string
+{
+    if (class_exists('Currency')) {
+        return Currency::formatExact($amount, Currency::getBaseCode(), $decimals);
+    }
+    return get_setting('currency_symbol', '₹') . number_format((float) $amount, $decimals ?? 2, '.', ',');
+}
+
+function format_exact_currency(float|string $exactAmount, ?string $currencyCode = null, ?int $decimals = null): string
+{
+    if (class_exists('Currency')) {
+        return Currency::formatExact($exactAmount, $currencyCode, $decimals);
+    }
+    return get_setting('currency_symbol', '₹') . number_format((float) $exactAmount, $decimals ?? 2, '.', ',');
 }
 
 function time_ago(string $datetime): string

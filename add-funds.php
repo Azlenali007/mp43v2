@@ -14,27 +14,67 @@ $paymentHistory = $payStmt->fetchAll();
 $siteName = get_setting('site_name', 'CrownSMM');
 $defaultTab = isset($enabledMethods['razorpay']) ? 'razorpay' : (isset($enabledMethods['manual']) ? 'manual' : '');
 
+$displayCurrency = Currency::getUserDisplay($user);
+$displayCode = (string) $displayCurrency['code'];
+$displaySymbol = (string) $displayCurrency['symbol'];
+$baseCurrency = Currency::getBase();
+$baseCode = (string) $baseCurrency['code'];
+$baseSymbol = (string) $baseCurrency['symbol'];
+
+$rzpMinDisp = isset($enabledMethods['razorpay']) ? Currency::convertFromBase((float) $enabledMethods['razorpay']['min_amount'], $displayCode, 2) : 0;
+$rzpMaxDisp = isset($enabledMethods['razorpay']) ? Currency::convertFromBase((float) $enabledMethods['razorpay']['max_amount'], $displayCode, 2) : 100000;
+$inrRateCheck = Currency::convertStrict(1, $displayCode, 'INR', 6);
+$toInrFactor = $inrRateCheck['ok'] ? (float) $inrRateCheck['cross_rate'] : 1.0;
+
+$manAcceptedCode = isset($enabledMethods['manual']) ? strtoupper((string) ($enabledMethods['manual']['accepted_currency'] ?? $baseCode)) : $baseCode;
+$manAcceptedCur = Currency::find($manAcceptedCode) ?: $baseCurrency;
+$manToBaseConv = Currency::convertStrict(1, $manAcceptedCode, $baseCode, 6);
+$manToBaseFactor = $manToBaseConv['ok'] ? (float) $manToBaseConv['cross_rate'] : 1.0;
+$manMinConv = isset($enabledMethods['manual']) ? Currency::convertStrict((float) $enabledMethods['manual']['min_amount'], $baseCode, $manAcceptedCode, 2) : ['ok' => true, 'amount' => 10];
+$manMaxConv = isset($enabledMethods['manual']) ? Currency::convertStrict((float) $enabledMethods['manual']['max_amount'], $baseCode, $manAcceptedCode, 2) : ['ok' => true, 'amount' => 100000];
+$manMinAmt = $manMinConv['ok'] ? (float) $manMinConv['amount'] : 1;
+$manMaxAmt = $manMaxConv['ok'] ? (float) $manMaxConv['amount'] : 100000;
+
 $pageTitle = 'Add Funds';
 require __DIR__ . '/includes/user-header.php';
 ?>
 <div class="space-y-6" x-data='{
   apiBase: <?= json_encode(app_root_prefix()) ?>,
   activeMethod: <?= json_encode($defaultTab) ?>,
+  displayCurrency: <?= json_encode($displayCode) ?>,
+  displaySymbol: <?= json_encode($displaySymbol) ?>,
+  baseCurrency: <?= json_encode($baseCode) ?>,
+  baseSymbol: <?= json_encode($baseSymbol) ?>,
+  toInrFactor: <?= json_encode($toInrFactor) ?>,
+  manAcceptedCode: <?= json_encode($manAcceptedCode) ?>,
+  manToBaseFactor: <?= json_encode($manToBaseFactor) ?>,
   rzpAmount: "",
+  manAmount: "",
   rzpLoading: false,
   rzpFeedback: null,
   manualFeedback: null,
   manualLoading: false,
+  get rzpInrPreview() {
+    const a = Number(this.rzpAmount || 0);
+    return a > 0 ? (a * this.toInrFactor).toFixed(2) : "0.00";
+  },
+  get manualBasePreview() {
+    const a = Number(this.manAmount || 0);
+    return a > 0 ? (a * this.manToBaseFactor).toFixed(2) : "0.00";
+  },
   async startRazorpay() {
     this.rzpFeedback = null;
     const amt = Number(this.rzpAmount);
     if (!amt || amt <= 0) {
-      this.rzpFeedback = { ok: false, message: "Enter a valid INR deposit amount." };
+      this.rzpFeedback = { ok: false, message: "Enter a valid deposit amount." };
       return;
     }
     this.rzpLoading = true;
     try {
-      const res = await window.SMMApp.postJson(this.apiBase + "api/razorpay-create-order.php", { amount: amt });
+      const res = await window.SMMApp.postJson(this.apiBase + "api/razorpay-create-order.php", {
+        amount: amt,
+        currency: this.displayCurrency
+      });
       if (!res.ok) {
         this.rzpFeedback = { ok: false, message: res.message || "Unable to create Razorpay order." };
         this.rzpLoading = false;
@@ -100,6 +140,7 @@ require __DIR__ . '/includes/user-header.php';
       this.manualFeedback = res;
       if (res.ok) {
         ev.target.reset();
+        this.manAmount = "";
         setTimeout(() => window.location.reload(), 1400);
       }
     } catch (e) {
@@ -112,7 +153,7 @@ require __DIR__ . '/includes/user-header.php';
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
     <div>
       <h1 class="text-2xl font-bold text-[#151515]">Add Funds</h1>
-      <p class="text-sm text-slate-600 mt-1">Deposit INR into your wallet using active payment methods.</p>
+      <p class="text-sm text-slate-600 mt-1">Deposit funds securely into your wallet. Balances are accounted canonically in <?= e($baseCode) ?> and shown in <?= e($displayCode) ?>.</p>
     </div>
     <div class="px-4 py-2.5 rounded-2xl bg-white border border-slate-200 flex items-center gap-3">
       <span class="text-xs text-slate-500">Current Balance</span>
@@ -146,11 +187,11 @@ require __DIR__ . '/includes/user-header.php';
         <button type="button" @click="activeMethod = 'manual'" :class="activeMethod === 'manual' ? 'border-[#7138D8] bg-purple-50/50 ring-2 ring-[#7138D8]/20' : 'border-slate-200 bg-white'" class="p-5 rounded-2xl border text-left transition">
           <div class="flex items-center justify-between gap-2">
             <h2 class="text-base font-bold text-[#151515]"><?= e($enabledMethods['manual']['name']) ?></h2>
-            <span class="text-xs font-semibold text-amber-600">Manual Review</span>
+            <span class="text-xs font-semibold text-amber-600">Manual (<?= e($manAcceptedCode) ?>)</span>
           </div>
           <p class="text-xs text-slate-600 mt-1"><?= e($enabledMethods['manual']['description']) ?></p>
           <p class="text-[11px] text-slate-500 font-mono-num mt-2">
-            Min: <?= e(format_currency($enabledMethods['manual']['min_amount'])) ?> · Max: <?= e(format_currency($enabledMethods['manual']['max_amount'])) ?>
+            Min: <?= e(format_exact_currency($manMinAmt, $manAcceptedCode)) ?> · Max: <?= e(format_exact_currency($manMaxAmt, $manAcceptedCode)) ?>
           </p>
         </button>
       <?php endif; ?>
@@ -159,8 +200,13 @@ require __DIR__ . '/includes/user-header.php';
     <!-- Razorpay Form -->
     <?php if (isset($enabledMethods['razorpay'])): ?>
       <div x-show="activeMethod === 'razorpay'" x-cloak class="bg-white border border-slate-200 rounded-2xl p-6 max-w-xl space-y-4">
-        <h3 class="text-base font-bold text-[#151515]">Pay Online via Razorpay (INR)</h3>
-        <p class="text-xs text-slate-600">Wallet funds are credited automatically once Razorpay verifies and confirms your transaction.</p>
+        <h3 class="text-base font-bold text-[#151515]">Pay Online via Razorpay</h3>
+        <p class="text-xs text-slate-600">
+          Enter deposit amount in <strong><?= e($displayCode) ?></strong>.
+          <?php if ($displayCode !== 'INR'): ?>
+            Gateway checkout processes in <strong>INR</strong> at the current system exchange rate before crediting your wallet.
+          <?php endif; ?>
+        </p>
 
         <template x-if="rzpFeedback">
           <div :class="rzpFeedback.ok ? 'bg-emerald-50 border-emerald-200 text-[#16A36A]' : 'bg-rose-50 border-rose-200 text-rose-700'" class="p-3.5 rounded-xl border text-sm font-medium" x-text="rzpFeedback.message"></div>
@@ -168,8 +214,13 @@ require __DIR__ . '/includes/user-header.php';
 
         <form @submit.prevent="startRazorpay" class="space-y-4">
           <div>
-            <label class="block text-xs font-semibold text-slate-700 mb-1.5">Amount (INR)</label>
-            <input type="number" step="0.01" min="<?= (float) $enabledMethods['razorpay']['min_amount'] ?>" max="<?= (float) $enabledMethods['razorpay']['max_amount'] ?>" x-model="rzpAmount" required placeholder="e.g. 500" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono-num focus:outline-none focus:border-[#7138D8]">
+            <label class="block text-xs font-semibold text-slate-700 mb-1.5">Amount (<?= e($displayCode) ?>)</label>
+            <input type="number" step="0.01" min="<?= (float) $rzpMinDisp ?>" max="<?= (float) $rzpMaxDisp ?>" x-model="rzpAmount" required placeholder="e.g. <?= $displayCode === 'INR' ? '500' : '10' ?>" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono-num focus:outline-none focus:border-[#7138D8]">
+            <?php if ($displayCode !== 'INR'): ?>
+              <p class="mt-1.5 text-[11px] text-slate-500 font-mono-num" x-show="Number(rzpAmount) > 0">
+                Gateway Checkout Total: <strong class="text-[#151515]">₹<span x-text="rzpInrPreview"></span> INR</strong>
+              </p>
+            <?php endif; ?>
           </div>
           <button type="submit" :disabled="rzpLoading" class="px-6 py-2.5 rounded-xl bg-[#7138D8] text-white text-sm font-semibold hover:bg-[#5B24C0] disabled:opacity-50 transition">
             <span x-text="rzpLoading ? 'Initializing Checkout...' : 'Proceed to Razorpay Checkout'"></span>
@@ -184,7 +235,7 @@ require __DIR__ . '/includes/user-header.php';
       <?php $man = $enabledMethods['manual']; ?>
       <div x-show="activeMethod === 'manual'" x-cloak class="grid lg:grid-cols-12 gap-6">
         <div class="lg:col-span-5 bg-white border border-slate-200 rounded-2xl p-6 space-y-4">
-          <h3 class="text-base font-bold text-[#151515]">Payment Details</h3>
+          <h3 class="text-base font-bold text-[#151515]">Payment Details (<?= e($manAcceptedCode) ?>)</h3>
           <?php if ($man['qr_code_path'] !== ''): ?>
             <div class="p-3 rounded-xl border border-slate-200 bg-slate-50 inline-block">
               <img src="<?= e(app_root_prefix() . $man['qr_code_path']) ?>" alt="Payment QR Code" class="w-44 h-44 object-contain rounded-lg">
@@ -220,17 +271,23 @@ require __DIR__ . '/includes/user-header.php';
 
         <div class="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-6 space-y-4">
           <h3 class="text-base font-bold text-[#151515]">Submit Payment Request</h3>
-          <p class="text-xs text-slate-600">After transferring funds externally, enter your UTR/transaction reference and upload your payment screenshot for administrator approval.</p>
+          <p class="text-xs text-slate-600">Transfer funds in <strong><?= e($manAcceptedCode) ?> (<?= e($manAcceptedCur['symbol']) ?>)</strong> and upload your transaction screenshot + UTR/reference for approval.</p>
 
           <template x-if="manualFeedback">
             <div :class="manualFeedback.ok ? 'bg-emerald-50 border-emerald-200 text-[#16A36A]' : 'bg-rose-50 border-rose-200 text-rose-700'" class="p-3.5 rounded-xl border text-sm font-medium" x-text="manualFeedback.message"></div>
           </template>
 
           <form @submit.prevent="submitManualPayment" enctype="multipart/form-data" class="space-y-4">
+            <input type="hidden" name="currency" value="<?= e($manAcceptedCode) ?>">
             <div class="grid sm:grid-cols-2 gap-4">
               <div>
-                <label class="block text-xs font-semibold text-slate-700 mb-1.5">Amount Paid (INR)</label>
-                <input type="number" name="amount" step="0.01" min="<?= (float) $man['min_amount'] ?>" max="<?= (float) $man['max_amount'] ?>" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono-num focus:outline-none focus:border-[#7138D8]">
+                <label class="block text-xs font-semibold text-slate-700 mb-1.5">Amount Paid (<?= e($manAcceptedCode) ?>)</label>
+                <input type="number" name="amount" x-model="manAmount" step="0.01" min="<?= (float) $manMinAmt ?>" max="<?= (float) $manMaxAmt ?>" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono-num focus:outline-none focus:border-[#7138D8]">
+                <?php if ($manAcceptedCode !== $baseCode): ?>
+                  <p class="mt-1 text-[11px] text-slate-500 font-mono-num" x-show="Number(manAmount) > 0">
+                    Wallet Credit: <strong class="text-[#16A36A]"><?= e($baseSymbol) ?><span x-text="manualBasePreview"></span> <?= e($baseCode) ?></strong>
+                  </p>
+                <?php endif; ?>
               </div>
               <div>
                 <label class="block text-xs font-semibold text-slate-700 mb-1.5">UTR / Transaction Reference</label>
@@ -250,7 +307,7 @@ require __DIR__ . '/includes/user-header.php';
     <?php endif; ?>
   <?php endif; ?>
 
-  <!-- Payment History -->
+  <!-- Payment History (Immutable Multi-Currency Snapshots) -->
   <div class="bg-white border border-slate-200 rounded-2xl p-6">
     <h2 class="text-base font-bold text-[#151515] mb-4">Payment History</h2>
     <?php if (empty($paymentHistory)): ?>
@@ -279,7 +336,17 @@ require __DIR__ . '/includes/user-header.php';
                     <span class="block text-[11px] text-slate-500 font-sans mt-0.5"><?= e($p['admin_note']) ?></span>
                   <?php endif; ?>
                 </td>
-                <td class="py-3 px-4 text-right font-mono-num font-semibold text-[#151515]"><?= e(format_currency($p['amount'])) ?></td>
+                <td class="py-3 px-4 text-right font-mono-num text-xs">
+                  <?php if (!empty($p['display_currency']) && $p['displayed_amount'] !== null): ?>
+                    <span class="font-semibold text-[#151515]"><?= e(format_exact_currency((float) $p['displayed_amount'], (string) $p['display_currency'])) ?> <?= e($p['display_currency']) ?></span>
+                    <?php $pBase = $p['base_currency'] ?? $baseCode; ?>
+                    <?php if (strtoupper((string)$p['display_currency']) !== strtoupper((string)$pBase)): ?>
+                      <span class="block text-[10px] text-slate-400">Wallet: <?= e(format_exact_currency((float)($p['base_amount'] ?? $p['amount']), (string)$pBase)) ?> <?= e($pBase) ?></span>
+                    <?php endif; ?>
+                  <?php else: ?>
+                    <span class="font-semibold text-[#151515]"><?= e(format_currency($p['amount'])) ?></span>
+                  <?php endif; ?>
+                </td>
                 <td class="py-3 px-4"><?= payment_status_badge($p['status']) ?></td>
                 <td class="py-3 pl-4 text-right text-xs text-slate-500 whitespace-nowrap"><?= e(date('d M Y, H:i', strtotime($p['created_at']))) ?></td>
               </tr>

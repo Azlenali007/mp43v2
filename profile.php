@@ -11,10 +11,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $name = sanitize_string($_POST['name'] ?? '', 120);
         $phone = sanitize_string($_POST['phone'] ?? '', 30);
         $tz = sanitize_string($_POST['timezone'] ?? 'Asia/Kolkata', 64);
+        $prefCur = strtoupper(sanitize_string($_POST['preferred_currency'] ?? '', 10));
+        if ($prefCur !== '') {
+            $curRow = Currency::find($prefCur);
+            if (!$curRow || (int) $curRow['is_enabled'] !== 1 || (float) ($curRow['exchange_rate'] ?? 0) <= 0) {
+                $prefCur = null;
+            }
+        } else {
+            $prefCur = null;
+        }
         if ($name === '') {
             set_flash('error', 'Name is required.');
         } else {
-            User::updateProfile((int) $user['id'], $name, $phone, $tz);
+            User::updateProfile((int) $user['id'], $name, $phone, $tz, $prefCur);
+            current_user(true);
             set_flash('success', 'Profile settings saved.');
         }
         redirect('profile.php');
@@ -34,6 +44,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+$readyCurrencies = Currency::all(true, true);
+$activeDisplayCur = Currency::getUserDisplay($user);
 $pageTitle = 'Account Settings';
 require __DIR__ . '/includes/user-header.php';
 ?>
@@ -62,6 +74,16 @@ require __DIR__ . '/includes/user-header.php';
       <div>
         <label class="block text-xs font-semibold text-slate-700 mb-1.5">Timezone</label>
         <input type="text" name="timezone" value="<?= e($user['timezone']) ?>" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-[#7138D8]">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 mb-1.5">Preferred Display Currency</label>
+        <select name="preferred_currency" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:border-[#7138D8]">
+          <?php foreach ($readyCurrencies as $rc): ?>
+            <option value="<?= e($rc['code']) ?>" <?= $activeDisplayCur['code'] === $rc['code'] ? 'selected' : '' ?>>
+              <?= e($rc['code']) ?> — <?= e($rc['name']) ?> (<?= e($rc['symbol']) ?>)
+            </option>
+          <?php endforeach; ?>
+        </select>
       </div>
       <button type="submit" class="px-5 py-2.5 rounded-xl bg-[#7138D8] text-white text-sm font-semibold hover:bg-[#5B24C0]">Save Changes</button>
     </form>

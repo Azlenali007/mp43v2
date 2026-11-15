@@ -25,17 +25,20 @@ class Provider
     public static function create(array $data): int
     {
         $pdo = Database::getConnection();
+        $cur = strtoupper(trim((string) ($data['currency'] ?? '')));
+        $curSource = ($data['currency_source'] ?? 'manual') === 'api' ? 'api' : 'manual';
         $stmt = $pdo->prepare(
-            'INSERT INTO providers (name, api_url, api_key, api_type, currency, status, notes)
-             VALUES (?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO providers (name, api_url, api_key, api_type, currency, currency_source, status, notes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $data['name'],
             $data['api_url'],
             encrypt_secret($data['api_key']),
-            $data['api_type'] ?: 'standard',
-            $data['currency'] ?: 'INR',
-            $data['status'] === 'disabled' ? 'disabled' : 'active',
+            $data['api_type'] ?? 'standard',
+            $cur ?: Currency::getBaseCode(),
+            $curSource,
+            ($data['status'] ?? 'active') === 'disabled' ? 'disabled' : 'active',
             $data['notes'] ?? null,
         ]);
         return (int) $pdo->lastInsertId();
@@ -48,20 +51,49 @@ class Provider
         $apiKeyEncrypted = !empty($data['api_key'])
             ? encrypt_secret($data['api_key'])
             : ($existing['api_key'] ?? '');
+        $cur = strtoupper(trim((string) ($data['currency'] ?? ($existing['currency'] ?? Currency::getBaseCode()))));
+        $curSource = ($data['currency_source'] ?? ($existing['currency_source'] ?? 'manual')) === 'api' ? 'api' : 'manual';
 
         $stmt = $pdo->prepare(
-            'UPDATE providers SET name = ?, api_url = ?, api_key = ?, api_type = ?, currency = ?, status = ?, notes = ? WHERE id = ?'
+            'UPDATE providers SET name = ?, api_url = ?, api_key = ?, api_type = ?, currency = ?, currency_source = ?, status = ?, notes = ? WHERE id = ?'
         );
         $stmt->execute([
             $data['name'],
             $data['api_url'],
             $apiKeyEncrypted,
             $data['api_type'] ?: 'standard',
-            $data['currency'] ?: 'INR',
+            $cur,
+            $curSource,
             $data['status'] === 'disabled' ? 'disabled' : 'active',
             $data['notes'] ?? null,
             $id,
         ]);
+    }
+
+    public static function validateProviderCurrencyConversion(array $provider): array
+    {
+        $provCurrency = strtoupper(trim((string) ($provider['currency'] ?? '')));
+        $provName = (string) ($provider['name'] ?? 'Provider');
+        if ($provCurrency === '') {
+            return [
+                'ok'    => false,
+                'error' => "Provider '{$provName}' does not have a currency configured. Set the provider currency first (Edit Provider or Test Balance).",
+            ];
+        }
+        $baseCode = Currency::getBaseCode();
+        $check = Currency::convertStrict(1.0, $provCurrency, $baseCode, 8);
+        if (!$check['ok']) {
+            return [
+                'ok'    => false,
+                'error' => "Cannot convert provider '{$provName}' currency ({$provCurrency} -> {$baseCode}): " . $check['error'],
+            ];
+        }
+        return [
+            'ok'                => true,
+            'provider_currency' => $provCurrency,
+            'base_currency'     => $baseCode,
+            'exchange_rate'     => (float) $check['cross_rate'],
+        ];
     }
 
     public static function request(array $provider, array $postParams): array
@@ -135,12 +167,18 @@ class Provider
             return ['ok' => false, 'error' => 'Provider response did not include balance field.'];
         }
         $balance = (float) $res['data']['balance'];
-        $currency = (string) ($res['data']['currency'] ?? $provider['currency']);
-        $pdo = Database::getConnection();
-        $stmt = $pdo->prepare('UPDATE providers SET balance = ?, currency = ?, last_sync_at = NOW() WHERE id = ?');
-        $stmt->execute([$balance, $currency, $providerId]);
+        $apiCur = strtoupper(trim((string) ($res['data']['currency'] ?? '')));
+        $currency = $apiCur !== '' ? $apiCur : strtoupper((string) $provider['currency']);
+        $source = $apiCur !== '' ? 'api' : ($provider['currency_source'] ?? 'manual');
 
-        return ['ok' => true, 'balance' => $balance, 'currency' => $currency];
+        $conv = Currency::convertStrict(1.0, $currency, Currency::getBaseCode(), 8);
+        $snapshot = $conv['ok'] ? (float) $conv['cross_rate'] : null;
+
+        $pdo = Database::getConnection();
+        $stmt = $pdo->prepare('UPDATE providers SET balance = ?, currency = ?, currency_source = ?, exchange_rate_snapshot = ?, last_sync_at = NOW() WHERE id = ?');
+        $stmt->execute([$balance, $currency, $source, $snapshot, $providerId]);
+
+        return ['ok' => true, 'balance' => $balance, 'currency' => $currency, 'currency_source' => $source];
     }
 
     public static function fetchServices(int $providerId): array

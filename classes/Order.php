@@ -21,7 +21,7 @@ class Order
             return ['ok' => false, 'error' => "Quantity must be between {$minQty} and {$maxQty}."];
         }
 
-        // Authoritative server-side price recalculation
+        // Canonical base currency calculation
         $rate = (float) $service['price_per_1000'];
         $providerRate = (float) $service['provider_rate'];
         $charge = round(($quantity / 1000.0) * $rate, 4);
@@ -32,13 +32,35 @@ class Order
             return ['ok' => false, 'error' => 'Invalid calculated order amount.'];
         }
 
+        // Snapshot user display currency at order creation time
+        $uStmt = $pdo->prepare('SELECT preferred_currency FROM users WHERE id = ? LIMIT 1');
+        $uStmt->execute([$userId]);
+        $uRow = $uStmt->fetch() ?: [];
+        $baseCode = Currency::getBaseCode();
+        $displayCur = Currency::getUserDisplay($uRow);
+        $displayCode = (string) $displayCur['code'];
+        $exRate = 1.0;
+        $displayedCharge = $charge;
+
+        if ($displayCode !== $baseCode) {
+            $conv = Currency::convertStrict($charge, $baseCode, $displayCode, 4);
+            if ($conv['ok']) {
+                $exRate = (float) $conv['cross_rate'];
+                $displayedCharge = (float) $conv['amount'];
+            } else {
+                $displayCode = $baseCode;
+            }
+        }
+
         $orderCode = 'ORD' . strtoupper(bin2hex(random_bytes(4)));
 
         $pdo->beginTransaction();
         try {
             $ins = $pdo->prepare(
-                'INSERT INTO orders (order_code, user_id, service_id, provider_id, link, quantity, charge, cost, profit, remains, status, placed_via)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                'INSERT INTO orders
+                 (order_code, user_id, service_id, provider_id, link, quantity, charge, cost, profit,
+                  base_currency, display_currency, exchange_rate, displayed_charge, remains, status, placed_via)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
             );
             $ins->execute([
                 $orderCode,
@@ -50,6 +72,10 @@ class Order
                 $charge,
                 $cost,
                 $profit,
+                $baseCode,
+                $displayCode,
+                $exRate,
+                $displayedCharge,
                 $quantity,
                 'pending',
                 $placedVia,
@@ -64,19 +90,30 @@ class Order
                 "Order #{$orderCode} - {$service['name']} (Qty: {$quantity})",
                 'order_debit_' . $orderCode,
                 null,
-                true
+                true,
+                [
+                    'original_amount'   => $displayedCharge,
+                    'original_currency' => $displayCode,
+                    'display_currency'  => $displayCode,
+                    'exchange_rate'     => $exRate,
+                    'displayed_amount'  => $displayedCharge,
+                ]
             );
             if (!$debit['ok']) {
                 throw new RuntimeException($debit['error']);
             }
 
-            self::addLog($orderId, 'pending', 'Order created and wallet debited (' . format_currency($charge) . ').');
+            self::addLog($orderId, 'pending', 'Order created and wallet debited (' . Currency::formatExact($displayedCharge, $displayCode) . ' / ' . Currency::formatExact($charge, $baseCode) . ').');
             $pdo->commit();
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
             }
             return ['ok' => false, 'error' => $e->getMessage()];
+        }
+
+        if ($displayCode !== $baseCode) {
+            Currency::logConversion('order_place', $baseCode, $displayCode, $charge, $displayedCharge, $exRate, $orderId);
         }
 
         // Dispatch to external provider API if linked
@@ -96,13 +133,16 @@ class Order
             }
         }
 
-        log_activity('user', $userId, 'order_placed', 'order', $orderId, "Code: {$orderCode}, Qty: {$quantity}");
+        log_activity('user', $userId, 'order_placed', 'order', $orderId, "Code: {$orderCode}, Qty: {$quantity}, BaseCharge: {$charge} {$baseCode}");
 
         return [
-            'ok'         => true,
-            'order_id'   => $orderId,
-            'order_code' => $orderCode,
-            'charge'     => $charge,
+            'ok'               => true,
+            'order_id'         => $orderId,
+            'order_code'       => $orderCode,
+            'charge'           => $charge,
+            'base_currency'    => $baseCode,
+            'display_currency' => $displayCode,
+            'displayed_charge' => $displayedCharge,
         ];
     }
 
@@ -184,6 +224,10 @@ class Order
             $newRefunded = round((float) $order['refunded_amount'] + $actualRefund, 4);
             $newStatus = ($newRefunded + 0.0001 >= (float) $order['charge']) ? 'refunded' : $order['status'];
 
+            $orderDispCur = (string) ($order['display_currency'] ?? Currency::getBaseCode());
+            $orderExRate = (float) ($order['exchange_rate'] ?? 1.0);
+            $dispRefund = round($actualRefund * $orderExRate, 4);
+
             $credit = Wallet::credit(
                 (int) $order['user_id'],
                 $actualRefund,
@@ -192,7 +236,14 @@ class Order
                 "Refund for Order #{$order['order_code']}: {$reason}",
                 'refund_order_' . $orderId,
                 $adminId,
-                'refund'
+                'refund',
+                [
+                    'original_amount'   => $dispRefund,
+                    'original_currency' => $orderDispCur,
+                    'display_currency'  => $orderDispCur,
+                    'exchange_rate'     => $orderExRate,
+                    'displayed_amount'  => $dispRefund,
+                ]
             );
             if (!$credit['ok']) {
                 throw new RuntimeException($credit['error']);
@@ -200,10 +251,10 @@ class Order
 
             $upd = $pdo->prepare('UPDATE orders SET refunded_amount = ?, status = ? WHERE id = ?');
             $upd->execute([$newRefunded, $newStatus, $orderId]);
-            self::addLog($orderId, $newStatus, 'Refunded ' . format_currency($actualRefund) . ': ' . $reason);
+            self::addLog($orderId, $newStatus, 'Refunded ' . Currency::formatExact($actualRefund, Currency::getBaseCode()) . ': ' . $reason);
 
             $pdo->commit();
-            create_notification((int) $order['user_id'], 'Order Refunded', "Order #{$order['order_code']} refunded " . format_currency($actualRefund), 'info', 'order-details.php?id=' . $orderId);
+            create_notification((int) $order['user_id'], 'Order Refunded', "Order #{$order['order_code']} refunded " . Currency::formatExact($dispRefund, $orderDispCur), 'info', 'order-details.php?id=' . $orderId);
             return ['ok' => true, 'refunded' => $actualRefund];
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {

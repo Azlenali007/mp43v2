@@ -45,12 +45,16 @@ foreach ($chartStmt->fetchAll() as $r) {
     $rawChart[$r['day_date']] = (float) $r['total_spend'];
 }
 
+$displayCurrency = Currency::getUserDisplay($user);
+$displayCode = (string) $displayCurrency['code'];
+$displayDecimals = (int) ($displayCurrency['decimal_places'] ?? 2);
+
 $seriesLabels = [];
 $seriesValues = [];
 for ($i = $days - 1; $i >= 0; $i--) {
     $d = date('Y-m-d', strtotime("-{$i} days"));
     $seriesLabels[] = $days === 7 ? date('D', strtotime($d)) : date('d M', strtotime($d));
-    $seriesValues[] = round($rawChart[$d] ?? 0.0, 2);
+    $seriesValues[] = Currency::convertFromBase($rawChart[$d] ?? 0.0, $displayCode, $displayDecimals);
 }
 
 // Recent orders
@@ -71,7 +75,7 @@ $announcements = $pdo->query(
     'SELECT * FROM announcements WHERE is_active = 1 ORDER BY created_at DESC LIMIT 4'
 )->fetchAll();
 
-$currencySymbol = get_setting('currency_symbol', '₹');
+$currencySymbol = (string) ($displayCurrency['symbol'] ?? get_setting('currency_symbol', '₹'));
 $pageTitle = 'Dashboard';
 require __DIR__ . '/includes/user-header.php';
 ?>

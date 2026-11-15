@@ -3,6 +3,47 @@ declare(strict_types=1);
 
 class Wallet
 {
+    private static function resolveSnapshot(int $userId, float $baseAmount, array $opts = []): array
+    {
+        $baseCode = Currency::getBaseCode();
+        $origAmount = isset($opts['original_amount']) ? (float) $opts['original_amount'] : $baseAmount;
+        $origCurrency = !empty($opts['original_currency']) ? strtoupper((string) $opts['original_currency']) : $baseCode;
+
+        $displayCode = !empty($opts['display_currency']) ? strtoupper((string) $opts['display_currency']) : null;
+        $exRate = isset($opts['exchange_rate']) ? (float) $opts['exchange_rate'] : null;
+        $dispAmt = isset($opts['displayed_amount']) ? (float) $opts['displayed_amount'] : null;
+
+        if ($displayCode === null) {
+            $pdo = Database::getConnection();
+            $uStmt = $pdo->prepare('SELECT preferred_currency FROM users WHERE id = ? LIMIT 1');
+            $uStmt->execute([$userId]);
+            $uRow = $uStmt->fetch() ?: [];
+            $dispCur = Currency::getUserDisplay($uRow);
+            $displayCode = (string) $dispCur['code'];
+        }
+
+        if ($exRate === null || $dispAmt === null) {
+            $conv = Currency::convertStrict($baseAmount, $baseCode, $displayCode, 4);
+            if ($conv['ok']) {
+                $exRate = (float) $conv['cross_rate'];
+                $dispAmt = (float) $conv['amount'];
+            } else {
+                $displayCode = $baseCode;
+                $exRate = 1.0;
+                $dispAmt = $baseAmount;
+            }
+        }
+
+        return [
+            'original_amount'   => round($origAmount, 4),
+            'original_currency' => $origCurrency,
+            'base_currency'     => $baseCode,
+            'exchange_rate'     => $exRate,
+            'display_currency'  => $displayCode,
+            'displayed_amount'  => round($dispAmt, 4),
+        ];
+    }
+
     public static function credit(
         int $userId,
         float $amount,
@@ -11,7 +52,8 @@ class Wallet
         string $description,
         ?string $idempotencyKey = null,
         ?int $adminId = null,
-        string $txType = 'credit'
+        string $txType = 'credit',
+        array $currencySnapshot = []
     ): array {
         if ($amount <= 0) {
             return ['ok' => false, 'error' => 'Credit amount must be positive.'];
@@ -45,22 +87,50 @@ class Wallet
 
             $before = (float) $user['wallet_balance'];
             $after = round($before + $amount, 4);
+            $snap = self::resolveSnapshot($userId, $amount, $currencySnapshot);
 
             $upd = $pdo->prepare('UPDATE users SET wallet_balance = ? WHERE id = ?');
             $upd->execute([$after, $userId]);
 
             $ins = $pdo->prepare(
-                'INSERT INTO wallet_transactions (user_id, type, amount, balance_before, balance_after, reference_type, reference_id, idempotency_key, description, created_by_admin)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                'INSERT INTO wallet_transactions
+                 (user_id, type, amount, balance_before, balance_after,
+                  original_amount, original_currency, base_currency, exchange_rate, display_currency, displayed_amount,
+                  reference_type, reference_id, idempotency_key, description, created_by_admin)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
             );
-            $ins->execute([$userId, $txType, $amount, $before, $after, $referenceType, $referenceId, $idempotencyKey, $description, $adminId]);
+            $ins->execute([
+                $userId,
+                $txType,
+                $amount,
+                $before,
+                $after,
+                $snap['original_amount'],
+                $snap['original_currency'],
+                $snap['base_currency'],
+                $snap['exchange_rate'],
+                $snap['display_currency'],
+                $snap['displayed_amount'],
+                $referenceType,
+                $referenceId,
+                $idempotencyKey,
+                $description,
+                $adminId,
+            ]);
             $txId = (int) $pdo->lastInsertId();
 
             if ($startedTx) {
                 $pdo->commit();
             }
 
-            return ['ok' => true, 'duplicate' => false, 'transaction_id' => $txId, 'balance_before' => $before, 'balance_after' => $after];
+            return [
+                'ok'             => true,
+                'duplicate'      => false,
+                'transaction_id' => $txId,
+                'balance_before' => $before,
+                'balance_after'  => $after,
+                'snapshot'       => $snap,
+            ];
         } catch (Throwable $e) {
             if ($startedTx && $pdo->inTransaction()) {
                 $pdo->rollBack();
@@ -77,7 +147,8 @@ class Wallet
         string $description,
         ?string $idempotencyKey = null,
         ?int $adminId = null,
-        bool $addToSpent = false
+        bool $addToSpent = false,
+        array $currencySnapshot = []
     ): array {
         if ($amount <= 0) {
             return ['ok' => false, 'error' => 'Debit amount must be positive.'];
@@ -114,6 +185,7 @@ class Wallet
                 throw new RuntimeException('Insufficient wallet balance.');
             }
             $after = max(0.0, round($before - $amount, 4));
+            $snap = self::resolveSnapshot($userId, $amount, $currencySnapshot);
 
             if ($addToSpent) {
                 $upd = $pdo->prepare('UPDATE users SET wallet_balance = ?, spent_total = spent_total + ? WHERE id = ?');
@@ -124,17 +196,44 @@ class Wallet
             }
 
             $ins = $pdo->prepare(
-                'INSERT INTO wallet_transactions (user_id, type, amount, balance_before, balance_after, reference_type, reference_id, idempotency_key, description, created_by_admin)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                'INSERT INTO wallet_transactions
+                 (user_id, type, amount, balance_before, balance_after,
+                  original_amount, original_currency, base_currency, exchange_rate, display_currency, displayed_amount,
+                  reference_type, reference_id, idempotency_key, description, created_by_admin)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
             );
-            $ins->execute([$userId, 'debit', $amount, $before, $after, $referenceType, $referenceId, $idempotencyKey, $description, $adminId]);
+            $ins->execute([
+                $userId,
+                'debit',
+                $amount,
+                $before,
+                $after,
+                $snap['original_amount'],
+                $snap['original_currency'],
+                $snap['base_currency'],
+                $snap['exchange_rate'],
+                $snap['display_currency'],
+                $snap['displayed_amount'],
+                $referenceType,
+                $referenceId,
+                $idempotencyKey,
+                $description,
+                $adminId,
+            ]);
             $txId = (int) $pdo->lastInsertId();
 
             if ($startedTx) {
                 $pdo->commit();
             }
 
-            return ['ok' => true, 'duplicate' => false, 'transaction_id' => $txId, 'balance_before' => $before, 'balance_after' => $after];
+            return [
+                'ok'             => true,
+                'duplicate'      => false,
+                'transaction_id' => $txId,
+                'balance_before' => $before,
+                'balance_after'  => $after,
+                'snapshot'       => $snap,
+            ];
         } catch (Throwable $e) {
             if ($startedTx && $pdo->inTransaction()) {
                 $pdo->rollBack();

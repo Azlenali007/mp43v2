@@ -92,7 +92,14 @@ require __DIR__ . '/../includes/admin-header.php';
                   <a href="../<?= e($p['screenshot_path']) ?>" target="_blank" class="block text-[#7138D8] font-sans font-semibold hover:underline mt-0.5">View Screenshot</a>
                 <?php endif; ?>
               </td>
-              <td class="py-3 px-3 text-right font-mono-num font-bold text-[#16A36A]"><?= e(format_currency($p['amount'])) ?></td>
+              <td class="py-3 px-3 text-right font-mono-num">
+                <span class="font-bold text-[#16A36A]"><?= e(format_base_currency($p['base_amount'] ?? $p['amount'])) ?></span>
+                <?php if (!empty($p['original_currency']) && strtoupper((string)$p['original_currency']) !== Currency::getBaseCode()): ?>
+                  <span class="block text-[10px] text-slate-500">
+                    Paid: <?= e(format_exact_currency((float)($p['original_amount'] ?? $p['amount']), (string)$p['original_currency'])) ?> <?= e($p['original_currency']) ?>
+                  </span>
+                <?php endif; ?>
+              </td>
               <td class="py-3 px-3"><?= payment_status_badge($p['status']) ?></td>
               <td class="py-3 px-4 text-right">
                 <?php if ($p['method_code'] === 'manual' && $p['status'] === 'pending'): ?>

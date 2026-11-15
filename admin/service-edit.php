@@ -123,14 +123,17 @@ require __DIR__ . '/../includes/admin-header.php';
 
     <div class="grid sm:grid-cols-4 gap-4">
       <div>
-        <label class="block text-xs font-semibold text-slate-700 mb-1">Provider Cost / 1K</label>
+        <label class="block text-xs font-semibold text-slate-700 mb-1">Provider Cost / 1K (<?= e(Currency::getBaseCode()) ?>)</label>
         <input type="number" step="0.0001" min="0" name="provider_rate" value="<?= e((string) $svc['provider_rate']) ?>" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono-num">
+        <?php if (!empty($svc['original_currency']) && $svc['original_provider_rate'] !== null): ?>
+          <p class="text-[10px] text-slate-400 mt-1">Original: <?= number_format((float)$svc['original_provider_rate'], 4) ?> <?= e($svc['original_currency']) ?></p>
+        <?php endif; ?>
       </div>
       <div>
         <label class="block text-xs font-semibold text-slate-700 mb-1">Margin Type</label>
         <select name="margin_type" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
           <option value="percent" <?= $svc['margin_type'] === 'percent' ? 'selected' : '' ?>>Percent (%)</option>
-          <option value="fixed" <?= $svc['margin_type'] === 'fixed' ? 'selected' : '' ?>>Fixed (+₹)</option>
+          <option value="fixed" <?= $svc['margin_type'] === 'fixed' ? 'selected' : '' ?>>Fixed (+<?= e(Currency::getBase()['symbol'] ?? '₹') ?>)</option>
         </select>
       </div>
       <div>

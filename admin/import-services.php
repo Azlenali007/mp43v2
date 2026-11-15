@@ -9,6 +9,7 @@ $providers = Provider::all(true);
 $categories = Category::all(false);
 $selectedProviderId = validate_positive_int($_GET['provider_id'] ?? null);
 $defaultMargin = (float) get_setting('default_margin_percent', '25');
+$baseCurrency = Currency::getBase();
 
 $pageTitle = 'Import Services';
 require __DIR__ . '/../includes/admin-header.php';
@@ -26,6 +27,9 @@ require __DIR__ . '/../includes/admin-header.php';
   loading: false,
   importing: false,
   feedback: null,
+  conversionInfo: null,
+  baseSymbol: <?= json_encode((string) $baseCurrency["symbol"]) ?>,
+  baseCode: <?= json_encode((string) $baseCurrency["code"]) ?>,
 
   get externalCategories() {
     const set = new Set();
@@ -43,15 +47,16 @@ require __DIR__ . '/../includes/admin-header.php';
   },
 
   calcSelling(svc) {
-    const rate = Number(svc.rate || 0);
+    const convertedCost = Number(svc.converted_cost ?? svc.rate ?? 0);
     const mType = svc.custom_margin_type || this.marginType;
     const mVal = svc.custom_margin_value !== "" && typeof svc.custom_margin_value !== "undefined" ? Number(svc.custom_margin_value) : Number(this.marginValue || 0);
-    if (mType === "fixed") return Math.max(0.01, rate + mVal);
-    return Math.max(0.01, rate + (rate * mVal / 100));
+    if (mType === "fixed") return Math.max(0.01, convertedCost + mVal);
+    return Math.max(0.01, convertedCost + (convertedCost * mVal / 100));
   },
 
   async fetchProviderServices() {
     this.feedback = null;
+    this.conversionInfo = null;
     if (!this.providerId) {
       this.feedback = { ok: false, message: "Choose a provider first." };
       return;
@@ -67,6 +72,7 @@ require __DIR__ . '/../includes/admin-header.php';
       if (!res.ok) {
         this.feedback = { ok: false, message: res.message || "Failed to fetch provider services." };
       } else {
+        this.conversionInfo = res.conversion || null;
         this.services = (res.services || []).map(s => ({
           ...s,
           custom_margin_type: "",
@@ -130,10 +136,13 @@ require __DIR__ . '/../includes/admin-header.php';
 }'>
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
     <div>
-      <h2 class="text-xl font-bold text-[#151515]">Import Services &amp; Margin Calculator</h2>
-      <p class="text-sm text-slate-600">Fetch real services from a provider API, preview duplicates, apply percentage/fixed margins, and import.</p>
+      <h2 class="text-xl font-bold text-[#151515]">Import Services &amp; Multi-Currency Calculator</h2>
+      <p class="text-sm text-slate-600">Automatically converts upstream provider rates into canonical Base Currency (<?= e($baseCurrency['code']) ?>) before applying margins.</p>
     </div>
-    <a href="services.php" class="px-4 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold">View Local Services</a>
+    <div class="flex items-center gap-2">
+      <a href="currencies.php" class="px-4 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold">Manage Exchange Rates</a>
+      <a href="services.php" class="px-4 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold">View Local Services</a>
+    </div>
   </div>
 
   <?php if (empty($providers)): ?>
@@ -159,7 +168,7 @@ require __DIR__ . '/../includes/admin-header.php';
           <label class="block text-xs font-semibold text-slate-700 mb-1">Default Margin Type</label>
           <select x-model="marginType" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
             <option value="percent">Percentage (%)</option>
-            <option value="fixed">Fixed (+Amount)</option>
+            <option value="fixed">Fixed (+<?= e($baseCurrency['symbol']) ?> <?= e($baseCurrency['code']) ?>)</option>
           </select>
         </div>
         <div>
@@ -171,7 +180,7 @@ require __DIR__ . '/../includes/admin-header.php';
       <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
         <div class="flex flex-wrap items-center gap-4 text-xs">
           <label class="flex items-center gap-2 font-medium text-slate-700">
-            <input type="checkbox" x-model="updateExisting"> Update Existing Services (sync rates &amp; margins)
+            <input type="checkbox" x-model="updateExisting"> Update Existing Services (sync converted rates &amp; margins)
           </label>
           <div class="flex items-center gap-2">
             <span class="text-slate-500">Target Category:</span>
@@ -185,13 +194,27 @@ require __DIR__ . '/../includes/admin-header.php';
         </div>
 
         <button type="button" @click="fetchProviderServices" :disabled="loading" class="px-5 py-2.5 rounded-xl bg-[#7138D8] text-white text-xs font-semibold hover:bg-[#5B24C0] disabled:opacity-50">
-          <span x-text="loading ? 'Fetching Live Catalog...' : 'Fetch Provider Services'"></span>
+          <span x-text="loading ? 'Fetching & Converting...' : 'Fetch Provider Services'"></span>
         </button>
       </div>
     </div>
 
+    <template x-if="conversionInfo">
+      <div class="p-4 rounded-2xl bg-purple-50 border border-purple-200 text-xs text-[#151515] flex flex-wrap items-center justify-between gap-2">
+        <span>
+          <strong>Active Conversion:</strong>
+          Provider Currency <span class="font-mono-num font-bold" x-text="conversionInfo.provider_currency"></span>
+          &rarr; Panel Base <span class="font-mono-num font-bold" x-text="conversionInfo.base_currency"></span>
+        </span>
+        <span class="font-mono-num font-bold text-[#7138D8]" x-text="'1 ' + conversionInfo.provider_currency + ' = ' + Number(conversionInfo.exchange_rate).toFixed(6) + ' ' + conversionInfo.base_currency"></span>
+      </div>
+    </template>
+
     <template x-if="feedback">
-      <div :class="feedback.ok ? 'bg-emerald-50 border-emerald-200 text-[#16A36A]' : 'bg-rose-50 border-rose-200 text-rose-700'" class="p-4 rounded-xl border text-sm font-medium" x-text="feedback.message"></div>
+      <div :class="feedback.ok ? 'bg-emerald-50 border-emerald-200 text-[#16A36A]' : 'bg-rose-50 border-rose-200 text-rose-700'" class="p-4 rounded-xl border text-sm font-medium flex flex-wrap items-center justify-between gap-2">
+        <span x-text="feedback.message"></span>
+        <a x-show="!feedback.ok && String(feedback.message || '').toLowerCase().includes('rate')" href="currencies.php" class="text-xs font-bold underline">Update Exchange Rates &rarr;</a>
+      </div>
     </template>
 
     <!-- Preview & Import Table -->
@@ -222,9 +245,11 @@ require __DIR__ . '/../includes/admin-header.php';
                 <th class="py-3 px-3"><input type="checkbox" @change="toggleAllFiltered($event.target.checked)"></th>
                 <th class="py-3 px-3">Ext ID</th>
                 <th class="py-3 px-3">Service Name &amp; Category</th>
-                <th class="py-3 px-3 text-right">Provider Price</th>
+                <th class="py-3 px-3 text-right">Provider Rate</th>
+                <th class="py-3 px-3 text-right">FX Rate</th>
+                <th class="py-3 px-3 text-right">Converted Cost (<?= e($baseCurrency['code']) ?>)</th>
                 <th class="py-3 px-3 text-right">Custom Margin</th>
-                <th class="py-3 px-3 text-right">Selling Price</th>
+                <th class="py-3 px-3 text-right">Final Selling (<?= e($baseCurrency['code']) ?>)</th>
                 <th class="py-3 px-3">Status</th>
               </tr>
             </thead>
@@ -237,11 +262,13 @@ require __DIR__ . '/../includes/admin-header.php';
                     <p class="font-semibold text-[#151515]" x-text="svc.name"></p>
                     <p class="text-[11px] text-slate-500" x-text="svc.category + ' · Min: ' + svc.min + ' · Max: ' + svc.max"></p>
                   </td>
-                  <td class="py-2.5 px-3 text-right font-mono-num" x-text="Number(svc.rate).toFixed(4)"></td>
+                  <td class="py-2.5 px-3 text-right font-mono-num" x-text="Number(svc.original_rate ?? svc.rate).toFixed(4) + ' ' + (svc.provider_currency || '')"></td>
+                  <td class="py-2.5 px-3 text-right font-mono-num text-slate-500" x-text="Number(svc.exchange_rate || 1).toFixed(4)"></td>
+                  <td class="py-2.5 px-3 text-right font-mono-num font-semibold" x-text="baseSymbol + Number(svc.converted_cost ?? svc.rate).toFixed(4)"></td>
                   <td class="py-2.5 px-3 text-right">
                     <input type="number" step="0.1" x-model="svc.custom_margin_value" :placeholder="marginValue" class="w-20 px-2 py-1 rounded-lg border border-slate-200 text-right font-mono-num">
                   </td>
-                  <td class="py-2.5 px-3 text-right font-mono-num font-bold text-[#16A36A]" x-text="calcSelling(svc).toFixed(4)"></td>
+                  <td class="py-2.5 px-3 text-right font-mono-num font-bold text-[#16A36A]" x-text="baseSymbol + calcSelling(svc).toFixed(4)"></td>
                   <td class="py-2.5 px-3">
                     <span x-show="svc.is_imported" class="px-2 py-0.5 rounded bg-amber-50 text-amber-700 font-semibold">Duplicate (#<span x-text="svc.local_id"></span>)</span>
                     <span x-show="!svc.is_imported" class="px-2 py-0.5 rounded bg-emerald-50 text-[#16A36A] font-semibold">New</span>

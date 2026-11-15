@@ -29,12 +29,25 @@ class User
         return $newKey;
     }
 
-    public static function updateProfile(int $userId, string $name, string $phone, string $timezone): void
+    public static function updateProfile(int $userId, string $name, string $phone, string $timezone, ?string $preferredCurrency = null): void
     {
         $pdo = Database::getConnection();
-        $stmt = $pdo->prepare('UPDATE users SET name = ?, phone = ?, timezone = ? WHERE id = ?');
-        $stmt->execute([$name, $phone ?: null, $timezone, $userId]);
+        if ($preferredCurrency !== null && $preferredCurrency !== '') {
+            $stmt = $pdo->prepare('UPDATE users SET name = ?, phone = ?, timezone = ?, preferred_currency = ? WHERE id = ?');
+            $stmt->execute([$name, $phone ?: null, $timezone, strtoupper($preferredCurrency), $userId]);
+        } else {
+            $stmt = $pdo->prepare('UPDATE users SET name = ?, phone = ?, timezone = ? WHERE id = ?');
+            $stmt->execute([$name, $phone ?: null, $timezone, $userId]);
+        }
         log_activity('user', $userId, 'profile_updated', 'user', $userId);
+    }
+
+    public static function updatePreferredCurrency(int $userId, string $currencyCode): void
+    {
+        $pdo = Database::getConnection();
+        $stmt = $pdo->prepare('UPDATE users SET preferred_currency = ? WHERE id = ?');
+        $stmt->execute([strtoupper(trim($currencyCode)), $userId]);
+        log_activity('user', $userId, 'currency_preference_updated', 'user', $userId, $currencyCode);
     }
 
     public static function changePassword(int $userId, string $currentPassword, string $newPassword): array

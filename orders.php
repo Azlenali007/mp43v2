@@ -95,7 +95,17 @@ require __DIR__ . '/includes/user-header.php';
               </td>
               <td class="py-3.5 px-4 text-xs text-slate-600 max-w-[200px] truncate"><?= e($ord['link']) ?></td>
               <td class="py-3.5 px-4 text-right font-mono-num text-xs"><?= number_format((int) $ord['quantity']) ?></td>
-              <td class="py-3.5 px-4 text-right font-mono-num text-xs font-semibold text-[#151515]"><?= e(format_currency($ord['charge'])) ?></td>
+              <td class="py-3.5 px-4 text-right font-mono-num text-xs">
+                <?php if (!empty($ord['display_currency']) && $ord['displayed_charge'] !== null): ?>
+                  <span class="font-semibold text-[#151515]"><?= e(format_exact_currency((float) $ord['displayed_charge'], (string) $ord['display_currency'], 4)) ?> <?= e($ord['display_currency']) ?></span>
+                  <?php $ordBase = $ord['base_currency'] ?? Currency::getBaseCode(); ?>
+                  <?php if (strtoupper((string) $ord['display_currency']) !== strtoupper((string) $ordBase)): ?>
+                    <span class="block text-[10px] text-slate-400"><?= e(format_exact_currency((float) $ord['charge'], (string) $ordBase, 4)) ?> <?= e($ordBase) ?></span>
+                  <?php endif; ?>
+                <?php else: ?>
+                  <span class="font-semibold text-[#151515]"><?= e(format_currency($ord['charge'])) ?></span>
+                <?php endif; ?>
+              </td>
               <td class="py-3.5 px-4 text-right font-mono-num text-xs text-slate-600"><?= number_format((int) $ord['remains']) ?></td>
               <td class="py-3.5 px-4 whitespace-nowrap"><?= order_status_badge($ord['status']) ?></td>
               <td class="py-3.5 px-4 text-right text-xs text-slate-500 whitespace-nowrap"><?= e(date('d M Y, H:i', strtotime($ord['created_at']))) ?></td>

@@ -50,7 +50,18 @@ require __DIR__ . '/includes/user-header.php';
     </div>
     <div>
       <p class="text-xs text-slate-500">Charge</p>
-      <p class="font-bold text-[#16A36A] font-mono-num mt-0.5"><?= e(format_currency($order['charge'])) ?></p>
+      <?php if (!empty($order['display_currency']) && $order['displayed_charge'] !== null): ?>
+        <p class="font-bold text-[#16A36A] font-mono-num mt-0.5"><?= e(format_exact_currency((float) $order['displayed_charge'], (string) $order['display_currency'], 4)) ?> <?= e($order['display_currency']) ?></p>
+        <?php $ordBase = $order['base_currency'] ?? Currency::getBaseCode(); ?>
+        <?php if (strtoupper((string) $order['display_currency']) !== strtoupper((string) $ordBase)): ?>
+          <p class="text-[11px] text-slate-400 font-mono-num mt-0.5">
+            Settled: <?= e(format_exact_currency((float) $order['charge'], (string) $ordBase, 4)) ?> <?= e($ordBase) ?>
+            <?php if (!empty($order['exchange_rate'])): ?>(Rate: <?= number_format((float) $order['exchange_rate'], 6) ?>)<?php endif; ?>
+          </p>
+        <?php endif; ?>
+      <?php else: ?>
+        <p class="font-bold text-[#16A36A] font-mono-num mt-0.5"><?= e(format_currency($order['charge'])) ?></p>
+      <?php endif; ?>
     </div>
     <div class="sm:col-span-2 lg:col-span-3">
       <p class="text-xs text-slate-500">Target Link</p>

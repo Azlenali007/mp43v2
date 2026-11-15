@@ -56,11 +56,29 @@ try {
          ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)'
     );
     $cronToken = bin2hex(random_bytes(20));
+    $baseCode = strtoupper(trim((string) ($setup['currency_code'] ?? 'INR'))) ?: 'INR';
+    $baseSymbol = trim((string) ($setup['currency_symbol'] ?? '₹')) ?: '₹';
     $settingStmt->execute(['site_name', $setup['site_name'], 'general']);
     $settingStmt->execute(['support_email', $setup['support_email'], 'general']);
-    $settingStmt->execute(['currency_code', $setup['currency_code'], 'general']);
-    $settingStmt->execute(['currency_symbol', $setup['currency_symbol'], 'general']);
+    $settingStmt->execute(['currency_code', $baseCode, 'general']);
+    $settingStmt->execute(['currency_symbol', $baseSymbol, 'general']);
+    $settingStmt->execute(['default_currency_code', $baseCode, 'currency']);
     $settingStmt->execute(['cron_token', $cronToken, 'system']);
+
+    // Ensure chosen base currency is configured cleanly in currencies table
+    $pdo->exec('UPDATE currencies SET is_base = 0, is_default = 0');
+    $curCheck = $pdo->prepare('SELECT id FROM currencies WHERE code = ? LIMIT 1');
+    $curCheck->execute([$baseCode]);
+    if ($curCheck->fetch()) {
+        $pdo->prepare('UPDATE currencies SET symbol = ?, is_base = 1, is_default = 1, exchange_rate = 1.00000000, rate_source = "base", is_enabled = 1, last_rate_updated_at = NOW() WHERE code = ?')
+            ->execute([$baseSymbol, $baseCode]);
+    } else {
+        $pdo->prepare('INSERT INTO currencies (code, name, symbol, decimal_places, is_base, is_default, rate_mode, exchange_rate, rate_source, is_enabled, sort_order, last_rate_updated_at) VALUES (?, ?, ?, 2, 1, 1, "auto", 1.00000000, "base", 1, 0, NOW())')
+            ->execute([$baseCode, $baseCode, $baseSymbol]);
+    }
+    if ($baseCode !== 'INR') {
+        $pdo->prepare('UPDATE currencies SET exchange_rate = NULL, rate_source = "unconfigured", last_rate_updated_at = NULL WHERE code = "INR" AND is_base = 0')->execute();
+    }
 
     // Create initial Super Admin
     $adminHash = password_hash($setup['admin_password'], PASSWORD_BCRYPT, ['cost' => 12]);
@@ -73,12 +91,14 @@ try {
         $insAdmin->execute([$setup['admin_name'], $setup['admin_email'], $adminHash]);
     }
 
-    // Verify all 21 required tables exist
+    // Verify all 28 required tables exist
     $requiredTables = [
         'users', 'admins', 'admin_roles', 'admin_permissions', 'categories', 'services',
         'providers', 'provider_service_mappings', 'orders', 'order_logs', 'wallet_transactions',
         'payments', 'payment_methods', 'payment_webhook_events', 'support_tickets',
         'ticket_messages', 'notifications', 'announcements', 'settings', 'activity_logs', 'api_logs',
+        'themes', 'currencies', 'exchange_rates', 'exchange_rate_logs', 'currency_conversion_logs',
+        'tools', 'tool_usage_logs',
     ];
     $existingTables = $pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);
     $missing = array_diff($requiredTables, $existingTables);

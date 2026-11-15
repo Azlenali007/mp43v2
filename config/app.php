@@ -13,8 +13,8 @@ if (!function_exists('app_base_url')) {
         $host = $_SERVER['HTTP_HOST'] ?? 'localhost:3000';
         $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
         $dir = str_replace('\\', '/', dirname($scriptName));
-        // Normalize if inside /admin, /user, /api, /install, /cron
-        $dir = preg_replace('#/(admin|user|api|install|cron)(/.*)?$#', '', $dir);
+        // Normalize if inside /admin, /user, /api, /install, /cron, /tools
+        $dir = preg_replace('#/(admin|user|api|install|cron|tools)(/.*)?$#', '', $dir);
         $dir = rtrim((string) $dir, '/');
         return $scheme . '://' . $host . $dir;
     }
@@ -27,7 +27,7 @@ if (!function_exists('app_root_prefix')) {
             return (string) APP_SUBDIR_PREFIX;
         }
         $script = $_SERVER['SCRIPT_NAME'] ?? '';
-        return preg_match('#/(admin|user|api|install|cron)/#', $script) ? '../' : '';
+        return preg_match('#/(admin|user|api|install|cron|tools)/#', $script) ? '../' : '';
     }
 }
 

@@ -64,9 +64,15 @@ require __DIR__ . '/../includes/admin-header.php';
             <span class="px-2 py-0.5 rounded-md text-xs font-semibold <?= $p['status'] === 'active' ? 'bg-emerald-50 text-[#16A36A]' : 'bg-slate-100 text-slate-600' ?>"><?= e(ucfirst($p['status'])) ?></span>
           </div>
 
-          <div class="p-3 rounded-xl bg-[#F8F9FC] border border-slate-200 flex items-center justify-between">
-            <span class="text-xs text-slate-500">Cached Balance</span>
-            <span class="text-sm font-bold font-mono-num text-[#151515]"><?= number_format((float) $p['balance'], 2) ?> <?= e($p['currency']) ?></span>
+          <div class="p-3 rounded-xl bg-[#F8F9FC] border border-slate-200 space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-500">Cached Balance</span>
+              <span class="text-sm font-bold font-mono-num text-[#151515]"><?= number_format((float) $p['balance'], 2) ?> <?= e($p['currency']) ?></span>
+            </div>
+            <?php $conv = Provider::validateProviderCurrencyConversion($p); ?>
+            <p class="text-[11px] <?= $conv['ok'] ? 'text-[#16A36A]' : 'text-amber-600' ?>">
+              <?= $conv['ok'] ? e("1 {$p['currency']} = " . number_format((float) $conv['exchange_rate'], 4) . ' ' . Currency::getBaseCode()) : e($conv['error']) ?>
+            </p>
           </div>
 
           <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">

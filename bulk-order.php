@@ -34,7 +34,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $res = Order::placeOrder((int) $user['id'], $svcId, $link, $qty, 'bulk');
             if ($res['ok']) {
-                $results[] = ['line' => $idx + 1, 'ok' => true, 'message' => "Order #{$res['order_code']} placed (" . format_currency($res['charge']) . ")"];
+                $dispFmt = isset($res['displayed_charge'], $res['display_currency'])
+                    ? format_exact_currency((float) $res['displayed_charge'], (string) $res['display_currency'], 4) . ' ' . $res['display_currency']
+                    : format_currency($res['charge']);
+                $results[] = ['line' => $idx + 1, 'ok' => true, 'message' => "Order #{$res['order_code']} placed (" . $dispFmt . ")"];
             } else {
                 $results[] = ['line' => $idx + 1, 'ok' => false, 'message' => $res['error']];
             }

@@ -133,7 +133,7 @@ require __DIR__ . '/../includes/admin-header.php';
         <label class="block text-xs font-semibold text-slate-700 mb-1">Margin Type</label>
         <select name="margin_type" x-model="marginType" @change="recalc()" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
           <option value="percent">Percent (%)</option>
-          <option value="fixed">Fixed (+₹)</option>
+          <option value="fixed">Fixed (+<?= e(Currency::getBase()['symbol'] ?? '₹') ?>)</option>
         </select>
       </div>
       <div>

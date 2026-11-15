@@ -68,6 +68,7 @@ require __DIR__ . '/../includes/admin-header.php';
       <div class="p-3 rounded-xl bg-[#F8F9FC] border border-slate-200 break-all"><?= e($baseUrl) ?>/cron/update-orders.php?token=<?= e($cronToken) ?></div>
       <div class="p-3 rounded-xl bg-[#F8F9FC] border border-slate-200 break-all"><?= e($baseUrl) ?>/cron/sync-services.php?token=<?= e($cronToken) ?></div>
       <div class="p-3 rounded-xl bg-[#F8F9FC] border border-slate-200 break-all"><?= e($baseUrl) ?>/cron/process-refunds.php?token=<?= e($cronToken) ?></div>
+      <div class="p-3 rounded-xl bg-[#F8F9FC] border border-slate-200 break-all"><?= e($baseUrl) ?>/cron/update-exchange-rates.php?token=<?= e($cronToken) ?></div>
     </div>
   </div>
 </div>

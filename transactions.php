@@ -46,7 +46,15 @@ require __DIR__ . '/includes/user-header.php';
               <td class="py-3.5 px-4 uppercase text-xs font-semibold <?= $isPositive ? 'text-[#16A36A]' : 'text-rose-600' ?>"><?= e($t['type']) ?></td>
               <td class="py-3.5 px-4 text-xs text-slate-700"><?= e($t['description']) ?></td>
               <td class="py-3.5 px-4 text-right font-mono-num font-semibold <?= $isPositive ? 'text-[#16A36A]' : 'text-rose-600' ?>">
-                <?= $isPositive ? '+' : '-' ?><?= e(format_currency($t['amount'])) ?>
+                <?php if (!empty($t['display_currency']) && $t['displayed_amount'] !== null): ?>
+                  <span><?= $isPositive ? '+' : '-' ?><?= e(format_exact_currency((float) $t['displayed_amount'], (string) $t['display_currency'], 4)) ?> <?= e($t['display_currency']) ?></span>
+                  <?php $txBase = $t['base_currency'] ?? Currency::getBaseCode(); ?>
+                  <?php if (strtoupper((string) $t['display_currency']) !== strtoupper((string) $txBase)): ?>
+                    <span class="block text-[10px] text-slate-400 font-normal">Base: <?= e(format_exact_currency((float) $t['amount'], (string) $txBase, 4)) ?> <?= e($txBase) ?></span>
+                  <?php endif; ?>
+                <?php else: ?>
+                  <?= $isPositive ? '+' : '-' ?><?= e(format_currency($t['amount'])) ?>
+                <?php endif; ?>
               </td>
               <td class="py-3.5 px-4 text-right font-mono-num text-xs text-[#151515]"><?= e(format_currency($t['balance_after'])) ?></td>
               <td class="py-3.5 px-4 text-right text-xs text-slate-500 whitespace-nowrap"><?= e(date('d M Y, H:i', strtotime($t['created_at']))) ?></td>

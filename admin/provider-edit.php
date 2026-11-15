@@ -13,6 +13,7 @@ if (!$provider) {
     redirect('providers.php');
 }
 
+$currencies = Currency::all(false, false);
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf_or_abort();
@@ -23,13 +24,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Valid name and API URL are required.';
     } else {
         Provider::update($id, [
-            'name'     => $name,
-            'api_url'  => $apiUrl,
-            'api_key'  => $apiKey,
-            'api_type' => 'standard',
-            'currency' => strtoupper(sanitize_string($_POST['currency'] ?? 'INR', 10)),
-            'status'   => $_POST['status'] ?? 'active',
-            'notes'    => sanitize_string($_POST['notes'] ?? '', 1000),
+            'name'            => $name,
+            'api_url'         => $apiUrl,
+            'api_key'         => $apiKey,
+            'api_type'        => 'standard',
+            'currency'        => strtoupper(sanitize_string($_POST['currency'] ?? $provider['currency'], 10)),
+            'currency_source' => 'manual',
+            'status'          => $_POST['status'] ?? 'active',
+            'notes'           => sanitize_string($_POST['notes'] ?? '', 1000),
         ]);
         log_activity('admin', (int) $admin['id'], 'provider_updated', 'provider', $id, $name);
         set_flash('success', 'Provider updated.');
@@ -62,8 +64,16 @@ require __DIR__ . '/../includes/admin-header.php';
     </div>
     <div class="grid grid-cols-2 gap-4">
       <div>
-        <label class="block text-xs font-semibold text-slate-700 mb-1">Currency</label>
-        <input type="text" name="currency" value="<?= e($provider['currency']) ?>" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm">
+        <label class="block text-xs font-semibold text-slate-700 mb-1">Provider Currency</label>
+        <select name="currency" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
+          <?php $found = false; foreach ($currencies as $c): ?>
+            <?php if ($c['code'] === strtoupper((string) $provider['currency'])) { $found = true; } ?>
+            <option value="<?= e($c['code']) ?>" <?= $c['code'] === strtoupper((string) $provider['currency']) ? 'selected' : '' ?>><?= e($c['code']) ?> — <?= e($c['name']) ?></option>
+          <?php endforeach; ?>
+          <?php if (!$found && !empty($provider['currency'])): ?>
+            <option value="<?= e($provider['currency']) ?>" selected><?= e($provider['currency']) ?> (Unregistered)</option>
+          <?php endif; ?>
+        </select>
       </div>
       <div>
         <label class="block text-xs font-semibold text-slate-700 mb-1">Status</label>

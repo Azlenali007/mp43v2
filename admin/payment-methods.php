@@ -70,15 +70,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $isEnabled = !empty($_POST['is_enabled']) ? 1 : 0;
         $minAmt = max(1.0, (float) ($_POST['min_amount'] ?? 10));
         $maxAmt = max($minAmt, (float) ($_POST['max_amount'] ?? 100000));
+        $acceptedCurrency = strtoupper(sanitize_string($_POST['accepted_currency'] ?? Currency::getBaseCode(), 10));
         $cfg = [
-            'method_name'    => sanitize_string($_POST['method_name'] ?? 'Manual UPI / Bank Transfer', 100),
-            'upi_id'         => sanitize_string($_POST['upi_id'] ?? '', 120),
-            'qr_code_path'   => $qrPath,
-            'bank_name'      => sanitize_string($_POST['bank_name'] ?? '', 120),
-            'account_holder' => sanitize_string($_POST['account_holder'] ?? '', 120),
-            'account_number' => sanitize_string($_POST['account_number'] ?? '', 60),
-            'ifsc_code'      => strtoupper(sanitize_string($_POST['ifsc_code'] ?? '', 30)),
-            'instructions'   => sanitize_string($_POST['instructions'] ?? '', 1000),
+            'method_name'       => sanitize_string($_POST['method_name'] ?? 'Manual UPI / Bank Transfer', 100),
+            'accepted_currency' => $acceptedCurrency ?: Currency::getBaseCode(),
+            'upi_id'            => sanitize_string($_POST['upi_id'] ?? '', 120),
+            'qr_code_path'      => $qrPath,
+            'bank_name'         => sanitize_string($_POST['bank_name'] ?? '', 120),
+            'account_holder'    => sanitize_string($_POST['account_holder'] ?? '', 120),
+            'account_number'    => sanitize_string($_POST['account_number'] ?? '', 60),
+            'ifsc_code'         => strtoupper(sanitize_string($_POST['ifsc_code'] ?? '', 30)),
+            'instructions'      => sanitize_string($_POST['instructions'] ?? '', 1000),
         ];
 
         $pdo->prepare('UPDATE payment_methods SET name = ?, is_enabled = ?, config_json = ?, min_amount = ?, max_amount = ?, updated_by = ? WHERE code = "manual"')
@@ -93,6 +95,8 @@ $razorpay = Payment::getMethod('razorpay');
 $manual = Payment::getMethod('manual');
 $rzpCfg = $razorpay['config'] ?? [];
 $manCfg = $manual['config'] ?? [];
+$readyCurrencies = Currency::all(true, true);
+$baseCurCode = Currency::getBaseCode();
 $webhookUrl = app_base_url() . '/api/razorpay-webhook.php';
 
 $pageTitle = 'Payment Methods';
@@ -265,11 +269,20 @@ require __DIR__ . '/../includes/admin-header.php';
           <input type="text" name="ifsc_code" value="<?= e($manCfg['ifsc_code'] ?? '') ?>" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono-num">
         </div>
         <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">Minimum Deposit (INR)</label>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Accepted Payment Currency</label>
+          <select name="accepted_currency" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
+            <?php $selAcc = strtoupper((string) ($manCfg['accepted_currency'] ?? $baseCurCode)); ?>
+            <?php foreach ($readyCurrencies as $rc): ?>
+              <option value="<?= e($rc['code']) ?>" <?= $selAcc === $rc['code'] ? 'selected' : '' ?>><?= e($rc['code']) ?> — <?= e($rc['name']) ?> (<?= e($rc['symbol']) ?>)</option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Minimum Deposit (<?= e($selAcc) ?>)</label>
           <input type="number" step="0.01" min="1" name="min_amount" value="<?= e((string) ($manual['min_amount'] ?? 10)) ?>" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono-num">
         </div>
         <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">Maximum Deposit (INR)</label>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Maximum Deposit (<?= e($selAcc) ?>)</label>
           <input type="number" step="0.01" min="1" name="max_amount" value="<?= e((string) ($manual['max_amount'] ?? 100000)) ?>" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono-num">
         </div>
       </div>

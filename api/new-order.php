@@ -32,11 +32,20 @@ if (!$res['ok']) {
 }
 
 $updatedUser = current_user(true);
+$displayCur = Currency::getUserDisplay($updatedUser);
+$dispCode = (string) $displayCur['code'];
+$baseBalance = (float) ($updatedUser['wallet_balance'] ?? 0);
+$dispBalance = Currency::convertFromBase($baseBalance, $dispCode, 4);
+
 json_response([
-    'ok'            => true,
-    'order_id'      => $res['order_id'],
-    'order_code'    => $res['order_code'],
-    'charge'        => $res['charge'],
-    'balance_after' => (float) ($updatedUser['wallet_balance'] ?? 0),
-    'message'       => "Order #{$res['order_code']} placed successfully (" . format_currency($res['charge']) . ").",
+    'ok'                    => true,
+    'order_id'              => $res['order_id'],
+    'order_code'            => $res['order_code'],
+    'charge'                => $res['charge'],
+    'displayed_charge'      => $res['displayed_charge'],
+    'display_currency'      => $res['display_currency'],
+    'balance_after'         => $dispBalance,
+    'balance_after_base'    => $baseBalance,
+    'balance_after_display' => $dispBalance,
+    'message'               => "Order #{$res['order_code']} placed successfully (" . Currency::formatExact($res['displayed_charge'], $res['display_currency']) . ").",
 ]);

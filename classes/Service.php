@@ -3,13 +3,12 @@ declare(strict_types=1);
 
 class Service
 {
-    public static function calculateSellingPrice(float $providerRate, string $marginType, float $marginValue): float
+    public static function calculateSellingPrice(float $baseProviderRate, string $marginType, float $marginValue): float
     {
         if ($marginType === 'fixed') {
-            return round(max(0.01, $providerRate + $marginValue), 4);
+            return round(max(0.0001, $baseProviderRate + $marginValue), 4);
         }
-        // Percentage margin: e.g. 100 + (100 * 30 / 100) = 130
-        return round(max(0.01, $providerRate + ($providerRate * $marginValue / 100.0)), 4);
+        return round(max(0.0001, $baseProviderRate + ($baseProviderRate * $marginValue / 100.0)), 4);
     }
 
     public static function all(?int $categoryId = null, bool $onlyActive = false, string $search = ''): array
@@ -36,7 +35,7 @@ class Service
 
         $where = $conds ? 'WHERE ' . implode(' AND ', $conds) : '';
         $sql = "SELECT s.*, c.name AS category_name, c.icon_key AS category_icon, c.platform AS category_platform,
-                       p.name AS provider_name
+                       p.name AS provider_name, p.currency AS provider_currency
                 FROM services s
                 INNER JOIN categories c ON c.id = s.category_id
                 LEFT JOIN providers p ON p.id = s.provider_id
@@ -64,10 +63,12 @@ class Service
     {
         $pdo = Database::getConnection();
         $stmt = $pdo->prepare(
-            'INSERT INTO services (category_id, provider_id, provider_service_id, name, description, icon_key, platform, type,
-                                   provider_rate, margin_type, margin_value, price_per_1000, min_qty, max_qty,
-                                   dripfeed, refill, cancel, sync_price, sort_order, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO services
+             (category_id, provider_id, provider_service_id, name, description, icon_key, platform, type,
+              original_currency, original_provider_rate, import_exchange_rate,
+              provider_rate, margin_type, margin_value, price_per_1000, min_qty, max_qty,
+              dripfeed, refill, cancel, sync_price, sort_order, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             (int) $data['category_id'],
@@ -78,6 +79,9 @@ class Service
             $data['icon_key'] ?: detect_icon_key_from_text($data['name']),
             $data['platform'] ?: detect_icon_key_from_text($data['name']),
             $data['type'] ?? 'default',
+            !empty($data['original_currency']) ? strtoupper((string) $data['original_currency']) : null,
+            (float) ($data['original_provider_rate'] ?? ($data['provider_rate'] ?? 0)),
+            (float) ($data['import_exchange_rate'] ?? 1.0),
             (float) ($data['provider_rate'] ?? 0),
             $data['margin_type'] ?? 'percent',
             (float) ($data['margin_value'] ?? 0),
@@ -99,7 +103,10 @@ class Service
         $pdo = Database::getConnection();
         $stmt = $pdo->prepare(
             'UPDATE services SET category_id = ?, provider_id = ?, provider_service_id = ?, name = ?, description = ?,
-             icon_key = ?, platform = ?, type = ?, provider_rate = ?, margin_type = ?, margin_value = ?, price_per_1000 = ?,
+             icon_key = ?, platform = ?, type = ?, original_currency = COALESCE(?, original_currency),
+             original_provider_rate = COALESCE(?, original_provider_rate),
+             import_exchange_rate = COALESCE(?, import_exchange_rate),
+             provider_rate = ?, margin_type = ?, margin_value = ?, price_per_1000 = ?,
              min_qty = ?, max_qty = ?, dripfeed = ?, refill = ?, cancel = ?, sync_price = ?, sort_order = ?, status = ?
              WHERE id = ?'
         );
@@ -112,6 +119,9 @@ class Service
             $data['icon_key'] ?: 'sparkles',
             $data['platform'] ?: 'general',
             $data['type'] ?? 'default',
+            isset($data['original_currency']) ? strtoupper((string) $data['original_currency']) : null,
+            isset($data['original_provider_rate']) ? (float) $data['original_provider_rate'] : null,
+            isset($data['import_exchange_rate']) ? (float) $data['import_exchange_rate'] : null,
             (float) ($data['provider_rate'] ?? 0),
             $data['margin_type'] ?? 'percent',
             (float) ($data['margin_value'] ?? 0),

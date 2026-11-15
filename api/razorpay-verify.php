@@ -34,20 +34,19 @@ if (!$payment) {
     json_response(['ok' => false, 'message' => 'Matching payment record not found.'], 404);
 }
 
-// 1. Verify HMAC-SHA256 payment signature using Key Secret
 if (!$rzpInfo['client']->verifyPaymentSignature($rzpOrderId, $rzpPaymentId, $rzpSignature)) {
     $pdo->prepare('UPDATE payments SET status = "failed", admin_note = "Signature verification failed" WHERE id = ? AND credited = 0')->execute([$paymentDbId]);
     json_response(['ok' => false, 'message' => 'Payment signature verification failed.'], 400);
 }
 
-// 2. Independently verify payment status & amount directly with Razorpay API
 $apiPayRes = $rzpInfo['client']->fetchPayment($rzpPaymentId);
 if (!$apiPayRes['ok']) {
     json_response(['ok' => false, 'message' => 'Unable to verify payment with Razorpay API: ' . $apiPayRes['error']], 502);
 }
 
 $apiPayment = $apiPayRes['data'];
-$expectedPaise = (int) round((float) $payment['amount'] * 100);
+$gatewayAmount = (float) ($payment['gateway_amount'] > 0 ? $payment['gateway_amount'] : $payment['amount']);
+$expectedPaise = (int) round($gatewayAmount * 100);
 $apiStatus = strtolower((string) ($apiPayment['status'] ?? ''));
 
 if (($apiPayment['order_id'] ?? '') !== $rzpOrderId || (int) ($apiPayment['amount'] ?? 0) !== $expectedPaise) {
@@ -59,14 +58,16 @@ if (!in_array($apiStatus, ['captured', 'authorized'], true)) {
     json_response(['ok' => false, 'message' => 'Payment status on Razorpay is ' . $apiStatus . '. Wallet not credited.'], 400);
 }
 
-// 3. Atomically credit wallet with row locking & duplicate protection
 $creditRes = Payment::creditVerifiedPayment($paymentDbId, $rzpPaymentId, $rzpSignature, null, 'Verified via Razorpay API (' . $apiStatus . ')');
 if (!$creditRes['ok']) {
     json_response(['ok' => false, 'message' => $creditRes['error']], 400);
 }
 
+$baseAmt = (float) ($payment['base_amount'] > 0 ? $payment['base_amount'] : $payment['amount']);
+$baseCur = (string) ($payment['base_currency'] ?: Currency::getBaseCode());
+
 log_activity('user', (int) $user['id'], 'razorpay_payment_verified', 'payment', $paymentDbId, "Razorpay Payment: {$rzpPaymentId}");
 json_response([
     'ok'      => true,
-    'message' => 'Payment verified and ' . format_currency($payment['amount']) . ' credited to your wallet!',
+    'message' => 'Payment verified and ' . format_currency($baseAmt) . ' (' . Currency::formatExact($baseAmt, $baseCur) . ') credited to your wallet!',
 ]);
