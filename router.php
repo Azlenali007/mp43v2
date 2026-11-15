@@ -26,8 +26,8 @@ if (preg_match('#^/uploads/.*\.php$#i', $decodedPath)) {
     exit;
 }
 
-// Map direct .php requests to clean URL 301 redirects (excluding api/ and install/)
-if (str_ends_with(strtolower($decodedPath), '.php') && !str_starts_with($decodedPath, '/api/') && !str_starts_with($decodedPath, '/install/')) {
+// Map direct GET .php requests to clean URL 301 redirects (excluding api/ and install/)
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET' && str_ends_with(strtolower($decodedPath), '.php') && !str_starts_with($decodedPath, '/api/') && !str_starts_with($decodedPath, '/install/')) {
     $cleanRoute = rtrim(substr($decodedPath, 0, -4), '/');
     if ($cleanRoute === '' || $cleanRoute === '/index') {
         $cleanRoute = '/';
