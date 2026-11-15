@@ -17,10 +17,7 @@ class Migrator
                 self::execSqlBatch($pdo, $schemaSql);
             }
 
-            $otpSchemaSql = @file_get_contents(APP_ROOT . '/database/otp_schema.sql');
-            if ($otpSchemaSql !== false) {
-                self::execSqlBatch($pdo, $otpSchemaSql);
-            }
+
 
             self::ensureCoreColumns($pdo);
 
@@ -44,9 +41,9 @@ class Migrator
                 self::execSqlBatch($pdo, $fixAuthSql);
             }
 
-            $rebuildOtpSql = @file_get_contents(APP_ROOT . '/database/updates/rebuild_otp_marketplace.sql');
-            if ($rebuildOtpSql !== false) {
-                self::execSqlBatch($pdo, $rebuildOtpSql);
+            $removeOtpSql = @file_get_contents(APP_ROOT . '/database/updates/remove_otp_completely.sql');
+            if ($removeOtpSql !== false) {
+                self::execSqlBatch($pdo, $removeOtpSql);
             }
 
             // Only seed defaults for brand-new databases where settings table is empty

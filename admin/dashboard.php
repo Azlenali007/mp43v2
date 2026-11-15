@@ -85,17 +85,7 @@ $pageTitle = 'Admin Dashboard';
 require __DIR__ . '/../includes/admin-header.php';
 ?>
 <div class="space-y-6">
-  <!-- OTP Marketplace Management Banner -->
-  <div class="rounded-2xl bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-950 p-6 text-white flex items-center justify-between gap-6 shadow-xl border border-purple-800/40">
-    <div class="space-y-1">
-      <span class="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-xs font-bold uppercase tracking-wider">Independent Module</span>
-      <h2 class="text-xl font-extrabold tracking-tight">OTP Marketplace Integration</h2>
-      <p class="text-xs text-purple-200">Manage API settings, sync SMS verification services, configure pricing markup and monitor OTP orders.</p>
-    </div>
-    <a href="<?= e(app_root_prefix()) ?>otp/admin/dashboard.php" class="px-6 py-3 rounded-xl bg-white text-purple-950 font-extrabold text-xs hover:bg-purple-50 transition shadow-md whitespace-nowrap shrink-0">
-      MANAGE OTP MARKETPLACE
-    </a>
-  </div>
+
 
   <!-- KPI Row 1 -->
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">

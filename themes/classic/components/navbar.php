@@ -28,12 +28,7 @@ $displayCurrency = $displayCurrency ?? Currency::getUserDisplay($loggedUser);
       <?php foreach ($navLinks as $link): ?>
         <a href="<?= e($link['href']) ?>" class="hover:text-[#7138D8] transition whitespace-nowrap shrink-0"><?= e($link['label']) ?></a>
       <?php endforeach; ?>
-      <?php if (function_exists('is_otp_public_enabled') && is_otp_public_enabled()): ?>
-        <div class="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs font-bold">
-          <a href="<?= e($rp) ?>index.php" class="px-3 py-1.5 rounded-lg bg-[#7138D8] text-white shadow-sm">SMM PANEL</a>
-          <a href="<?= e($rp) ?>otp/dashboard.php" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">OTP MARKETPLACE</a>
-        </div>
-      <?php endif; ?>
+
     </nav>
 
     <div class="flex items-center gap-2.5 shrink-0">
