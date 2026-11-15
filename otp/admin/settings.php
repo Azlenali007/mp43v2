@@ -1,20 +1,22 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../../includes/auth.php';
 $admin = require_admin();
+$pdo = Database::getConnection();
 
 $message = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (verify_csrf()) {
-        set_otp_setting('otp_enabled', isset($_POST['otp_enabled']) ? '1' : '0');
-        set_otp_setting('otp_public_enabled', isset($_POST['otp_public_enabled']) ? '1' : '0');
+        $enabled = isset($_POST['otp_enabled']) ? '1' : '0';
+        $pdo->prepare('INSERT INTO otp_settings (setting_key, setting_value) VALUES ("otp_enabled", ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)')->execute([$enabled]);
         $message = 'OTP Marketplace settings updated successfully.';
     }
 }
 
-$otpEnabled = is_otp_enabled();
-$publicEnabled = is_otp_public_enabled();
-$pageTitle = 'OTP Marketplace Settings';
+$stmt = $pdo->prepare('SELECT setting_value FROM otp_settings WHERE setting_key = "otp_enabled" LIMIT 1');
+$stmt->execute();
+$otpEnabled = ($stmt->fetchColumn() ?: '1') === '1';
+$pageTitle = '5. Settings';
 ?>
 <!DOCTYPE html>
 <html lang="en" class="theme-classic">
@@ -25,7 +27,7 @@ $pageTitle = 'OTP Marketplace Settings';
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../assets/css/style.css">
+  <link rel="stylesheet" href="../../assets/css/style.css">
 </head>
 <body class="bg-[#0f0b1e] text-slate-100 font-['Plus_Jakarta_Sans',sans-serif] antialiased min-h-screen flex">
   <aside class="hidden lg:flex flex-col w-72 bg-[#16102e] border-r border-purple-900/40 p-6 shrink-0">
@@ -39,21 +41,21 @@ $pageTitle = 'OTP Marketplace Settings';
       </div>
     </div>
     <nav class="space-y-1.5 flex-1">
-      <a href="otp-dashboard.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Dashboard</a>
-      <a href="otp-api.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">API Settings</a>
-      <a href="otp-services.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Countries & Services</a>
-      <a href="otp-pricing.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Pricing Markup</a>
-      <a href="otp-orders.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">OTP Orders</a>
-      <a href="otp-settings.php" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-purple-600 text-white font-semibold text-sm shadow-lg shadow-purple-600/25">Settings</a>
+      <a href="dashboard.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Dashboard</a>
+      <a href="api.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">1. API Settings</a>
+      <a href="services.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">2. Countries & Services</a>
+      <a href="pricing.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">3. Pricing</a>
+      <a href="orders.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">4. OTP Orders</a>
+      <a href="settings.php" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-purple-600 text-white font-semibold text-sm shadow-lg shadow-purple-600/25">5. Settings</a>
     </nav>
     <div class="pt-4 border-t border-purple-900/40">
-      <a href="dashboard.php" class="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-800/50 font-bold text-xs transition">Back to SMM Admin</a>
+      <a href="../../admin/dashboard.php" class="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-800/50 font-bold text-xs transition">Back to SMM Admin</a>
     </div>
   </aside>
 
   <div class="flex-1 flex flex-col min-w-0">
     <header class="h-20 bg-[#16102e]/90 backdrop-blur border-b border-purple-900/40 px-6 sm:px-8 flex items-center justify-between sticky top-0 z-30">
-      <h2 class="text-lg font-bold text-white">OTP Marketplace Settings</h2>
+      <h2 class="text-lg font-bold text-white">5. OTP Marketplace Settings</h2>
     </header>
 
     <main class="flex-1 p-6 sm:p-8 space-y-6 max-w-[900px] w-full mx-auto">
@@ -68,20 +70,12 @@ $pageTitle = 'OTP Marketplace Settings';
             <input type="checkbox" name="otp_enabled" value="1" <?= $otpEnabled ? 'checked' : '' ?> class="w-5 h-5 rounded border-purple-900 bg-purple-950 text-purple-600 focus:ring-0">
             <div>
               <p class="font-bold text-white text-sm">Enable OTP Marketplace</p>
-              <p class="text-xs text-purple-300">Allow users to access OTP marketplace features and purchase numbers.</p>
-            </div>
-          </label>
-
-          <label class="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" name="otp_public_enabled" value="1" <?= $publicEnabled ? 'checked' : '' ?> class="w-5 h-5 rounded border-purple-900 bg-purple-950 text-purple-600 focus:ring-0">
-            <div>
-              <p class="font-bold text-white text-sm">Enable Public Landing Page Switcher</p>
-              <p class="text-xs text-purple-300">Display OTP Marketplace option and hero CTA on the public landing page navbar.</p>
+              <p class="text-xs text-purple-300">Allow users to access OTP marketplace and purchase numbers.</p>
             </div>
           </label>
         </div>
         <div class="flex items-center justify-end pt-4 border-t border-purple-900/40">
-          <button type="submit" class="px-8 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm shadow-lg shadow-purple-600/30 transition">Save Settings</button>
+          <button type="submit" class="px-8 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm shadow-lg transition">Save Settings</button>
         </div>
       </form>
     </main>

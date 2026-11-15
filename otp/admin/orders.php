@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../../includes/auth.php';
 $admin = require_admin();
 $pdo = Database::getConnection();
 
 $orders = $pdo->query('SELECT o.*, u.username, s.name AS service_name FROM otp_orders o JOIN users u ON u.id = o.user_id JOIN otp_services s ON s.id = o.service_id ORDER BY o.created_at DESC LIMIT 100')->fetchAll();
-$pageTitle = 'Admin OTP Orders';
+$pageTitle = '4. OTP Orders';
 ?>
 <!DOCTYPE html>
 <html lang="en" class="theme-classic">
@@ -16,7 +16,7 @@ $pageTitle = 'Admin OTP Orders';
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../assets/css/style.css">
+  <link rel="stylesheet" href="../../assets/css/style.css">
 </head>
 <body class="bg-[#0f0b1e] text-slate-100 font-['Plus_Jakarta_Sans',sans-serif] antialiased min-h-screen flex">
   <aside class="hidden lg:flex flex-col w-72 bg-[#16102e] border-r border-purple-900/40 p-6 shrink-0">
@@ -30,21 +30,21 @@ $pageTitle = 'Admin OTP Orders';
       </div>
     </div>
     <nav class="space-y-1.5 flex-1">
-      <a href="otp-dashboard.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Dashboard</a>
-      <a href="otp-api.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">API Settings</a>
-      <a href="otp-services.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Countries & Services</a>
-      <a href="otp-pricing.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Pricing Markup</a>
-      <a href="otp-orders.php" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-purple-600 text-white font-semibold text-sm shadow-lg shadow-purple-600/25">OTP Orders</a>
-      <a href="otp-settings.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Settings</a>
+      <a href="dashboard.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Dashboard</a>
+      <a href="api.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">1. API Settings</a>
+      <a href="services.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">2. Countries & Services</a>
+      <a href="pricing.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">3. Pricing</a>
+      <a href="orders.php" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-purple-600 text-white font-semibold text-sm shadow-lg shadow-purple-600/25">4. OTP Orders</a>
+      <a href="settings.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">5. Settings</a>
     </nav>
     <div class="pt-4 border-t border-purple-900/40">
-      <a href="dashboard.php" class="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-800/50 font-bold text-xs transition">Back to SMM Admin</a>
+      <a href="../../admin/dashboard.php" class="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-800/50 font-bold text-xs transition">Back to SMM Admin</a>
     </div>
   </aside>
 
   <div class="flex-1 flex flex-col min-w-0">
     <header class="h-20 bg-[#16102e]/90 backdrop-blur border-b border-purple-900/40 px-6 sm:px-8 flex items-center justify-between sticky top-0 z-30">
-      <h2 class="text-lg font-bold text-white">All OTP Orders</h2>
+      <h2 class="text-lg font-bold text-white">4. All OTP Orders</h2>
     </header>
 
     <main class="flex-1 p-6 sm:p-8 space-y-6 max-w-[1400px] w-full mx-auto">
@@ -72,12 +72,8 @@ $pageTitle = 'Admin OTP Orders';
                   <td class="p-4 font-sans font-medium"><?= e($o['username']) ?></td>
                   <td class="p-4 font-sans"><?= e($o['service_name']) ?></td>
                   <td class="p-4"><?= e($o['phone_number']) ?></td>
-                  <td class="p-4 font-sans">
-                    <span class="px-2.5 py-1 rounded-md text-xs font-bold <?= $o['status'] === 'received' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : ($o['status'] === 'waiting' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30') ?>">
-                      <?= ucfirst($o['status']) ?>
-                    </span>
-                  </td>
-                  <td class="p-4 font-extrabold text-purple-300"><?= e($o['sms_code'] ?? '—') ?></td>
+                  <td class="p-4 font-sans"><span class="px-2.5 py-1 rounded-md text-xs font-bold bg-purple-500/20 text-purple-300"><?= ucfirst($o['status']) ?></span></td>
+                  <td class="p-4 font-extrabold text-emerald-400"><?= e($o['sms_code'] ?? '—') ?></td>
                   <td class="p-4">₹<?= number_format((float)$o['charge'], 2) ?> <span class="text-purple-400 text-[10px]">(+₹<?= number_format((float)$o['profit'], 2) ?>)</span></td>
                   <td class="p-4 text-purple-400 font-sans text-[11px]"><?= e($o['created_at']) ?></td>
                 </tr>

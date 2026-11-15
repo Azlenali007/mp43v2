@@ -1,8 +1,14 @@
--- OTP Marketplace Database Schema
+-- ============================================================================
+-- SQL Migration: rebuild_otp_marketplace.sql
+-- Description: Creates fresh, independent OTP Marketplace tables from scratch.
+-- ============================================================================
+
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
 
 CREATE TABLE IF NOT EXISTS `otp_providers` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `name` VARCHAR(120) NOT NULL DEFAULT 'SMS-Activate / DaisySMS',
+  `name` VARCHAR(120) NOT NULL DEFAULT 'SMS-Activate',
   `api_url` VARCHAR(255) NOT NULL DEFAULT 'https://api.sms-activate.org/stg/handler.php',
   `api_key` TEXT NOT NULL,
   `api_type` VARCHAR(40) NOT NULL DEFAULT 'smsactivate',
@@ -12,8 +18,7 @@ CREATE TABLE IF NOT EXISTS `otp_providers` (
   `notes` TEXT NULL DEFAULT NULL,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_otp_prov_status` (`status`)
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `otp_countries` (
@@ -29,8 +34,7 @@ CREATE TABLE IF NOT EXISTS `otp_countries` (
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_otp_country` (`provider_id`, `country_code`),
-  KEY `idx_otp_country_enabled` (`is_enabled`, `sort_order`)
+  UNIQUE KEY `uniq_otp_country` (`provider_id`, `country_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `otp_services` (
@@ -53,8 +57,19 @@ CREATE TABLE IF NOT EXISTS `otp_services` (
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_otp_service` (`provider_id`, `country_code`, `external_service_id`),
-  KEY `idx_otp_svc_country` (`country_code`, `is_enabled`)
+  UNIQUE KEY `uniq_otp_service` (`provider_id`, `country_code`, `external_service_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `otp_provider_prices` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `provider_id` INT UNSIGNED NOT NULL,
+  `country_code` VARCHAR(20) NOT NULL,
+  `service_code` VARCHAR(50) NOT NULL,
+  `cost` DECIMAL(14,4) NOT NULL DEFAULT 0.0000,
+  `count` INT UNSIGNED NOT NULL DEFAULT 0,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_otp_prov_price` (`provider_id`, `country_code`, `service_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `otp_orders` (
@@ -83,8 +98,7 @@ CREATE TABLE IF NOT EXISTS `otp_orders` (
   `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_otp_order_code` (`order_code`),
-  KEY `idx_otp_user_status` (`user_id`, `status`),
-  KEY `idx_otp_activation` (`provider_activation_id`)
+  KEY `idx_otp_user_status` (`user_id`, `status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `otp_order_logs` (
@@ -95,8 +109,7 @@ CREATE TABLE IF NOT EXISTS `otp_order_logs` (
   `raw_response` TEXT NULL DEFAULT NULL,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `idx_otp_logs_order` (`order_id`),
-  CONSTRAINT `fk_otp_logs_order` FOREIGN KEY (`order_id`) REFERENCES `otp_orders` (`id`) ON DELETE CASCADE
+  KEY `idx_otp_logs_order` (`order_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `otp_transactions` (
@@ -110,8 +123,17 @@ CREATE TABLE IF NOT EXISTS `otp_transactions` (
   `description` VARCHAR(255) NOT NULL,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `idx_otp_tx_user` (`user_id`),
-  CONSTRAINT `fk_otp_tx_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT
+  KEY `idx_otp_tx_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `otp_refunds` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `order_id` INT UNSIGNED NOT NULL,
+  `user_id` INT UNSIGNED NOT NULL,
+  `amount` DECIMAL(14,4) NOT NULL,
+  `reason` VARCHAR(255) NOT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `otp_sync_logs` (
@@ -122,8 +144,15 @@ CREATE TABLE IF NOT EXISTS `otp_sync_logs` (
   `message` VARCHAR(500) NULL DEFAULT NULL,
   `raw_payload` MEDIUMTEXT NULL DEFAULT NULL,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_otp_sync_created` (`created_at`)
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `otp_cron_logs` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `task` VARCHAR(80) NOT NULL,
+  `message` VARCHAR(500) NOT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `otp_settings` (
@@ -134,3 +163,5 @@ CREATE TABLE IF NOT EXISTS `otp_settings` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_otp_setting_key` (`setting_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+SET FOREIGN_KEY_CHECKS = 1;

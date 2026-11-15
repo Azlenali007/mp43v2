@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/../classes/OtpProvider.php';
 $admin = require_admin();
 $pdo = Database::getConnection();
 
@@ -21,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sync_services'])) {
 }
 
 $services = $pdo->query('SELECT s.*, c.name AS country_name FROM otp_services s LEFT JOIN otp_countries c ON c.country_code = s.country_code ORDER BY s.id DESC LIMIT 100')->fetchAll();
-$pageTitle = 'OTP Countries & Services';
+$pageTitle = '2. Countries & Services';
 ?>
 <!DOCTYPE html>
 <html lang="en" class="theme-classic">
@@ -32,7 +33,7 @@ $pageTitle = 'OTP Countries & Services';
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../assets/css/style.css">
+  <link rel="stylesheet" href="../../assets/css/style.css">
 </head>
 <body class="bg-[#0f0b1e] text-slate-100 font-['Plus_Jakarta_Sans',sans-serif] antialiased min-h-screen flex">
   <aside class="hidden lg:flex flex-col w-72 bg-[#16102e] border-r border-purple-900/40 p-6 shrink-0">
@@ -46,25 +47,25 @@ $pageTitle = 'OTP Countries & Services';
       </div>
     </div>
     <nav class="space-y-1.5 flex-1">
-      <a href="otp-dashboard.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Dashboard</a>
-      <a href="otp-api.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">API Settings</a>
-      <a href="otp-services.php" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-purple-600 text-white font-semibold text-sm shadow-lg shadow-purple-600/25">Countries & Services</a>
-      <a href="otp-pricing.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Pricing Markup</a>
-      <a href="otp-orders.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">OTP Orders</a>
-      <a href="otp-settings.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Settings</a>
+      <a href="dashboard.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Dashboard</a>
+      <a href="api.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">1. API Settings</a>
+      <a href="services.php" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-purple-600 text-white font-semibold text-sm shadow-lg shadow-purple-600/25">2. Countries & Services</a>
+      <a href="pricing.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">3. Pricing</a>
+      <a href="orders.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">4. OTP Orders</a>
+      <a href="settings.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">5. Settings</a>
     </nav>
     <div class="pt-4 border-t border-purple-900/40">
-      <a href="dashboard.php" class="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-800/50 font-bold text-xs transition">Back to SMM Admin</a>
+      <a href="../../admin/dashboard.php" class="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-800/50 font-bold text-xs transition">Back to SMM Admin</a>
     </div>
   </aside>
 
   <div class="flex-1 flex flex-col min-w-0">
     <header class="h-20 bg-[#16102e]/90 backdrop-blur border-b border-purple-900/40 px-6 sm:px-8 flex items-center justify-between sticky top-0 z-30">
-      <h2 class="text-lg font-bold text-white">Import & Sync OTP Services</h2>
+      <h2 class="text-lg font-bold text-white">2. Countries & Services Sync</h2>
       <form method="POST">
         <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
         <input type="hidden" name="sync_services" value="1">
-        <button type="submit" class="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition shadow-md shadow-purple-600/30">Fetch & Sync from API</button>
+        <button type="submit" class="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition shadow-md">Fetch & Sync from API</button>
       </form>
     </header>
 
@@ -86,12 +87,11 @@ $pageTitle = 'OTP Countries & Services';
               <th class="p-4">Provider Cost</th>
               <th class="p-4">Selling Price</th>
               <th class="p-4">Stock</th>
-              <th class="p-4">Status</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-purple-900/20 text-purple-100 font-mono text-xs">
             <?php if (empty($services)): ?>
-              <tr><td colspan="7" class="py-12 text-center text-purple-400 font-sans">No services synced yet. Click "Fetch & Sync from API".</td></tr>
+              <tr><td colspan="6" class="py-12 text-center text-purple-400 font-sans">No services synced yet. Click "Fetch & Sync from API".</td></tr>
             <?php else: ?>
               <?php foreach ($services as $s): ?>
                 <tr class="hover:bg-purple-900/10">
@@ -101,9 +101,6 @@ $pageTitle = 'OTP Countries & Services';
                   <td class="p-4">₹<?= number_format((float)$s['original_provider_rate'], 2) ?></td>
                   <td class="p-4 font-extrabold text-white">₹<?= number_format((float)$s['price_per_number'], 2) ?></td>
                   <td class="p-4 font-sans"><?= e($s['stock_status']) ?></td>
-                  <td class="p-4 font-sans">
-                    <span class="px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Active</span>
-                  </td>
                 </tr>
               <?php endforeach; ?>
             <?php endif; ?>

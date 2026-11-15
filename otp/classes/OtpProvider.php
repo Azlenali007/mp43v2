@@ -19,7 +19,7 @@ class OtpProvider
     {
         $provider = self::getActive();
         if (!$provider || empty($provider['api_key'])) {
-            return ['ok' => false, 'error' => 'OTP provider is not configured or disabled.'];
+            return ['ok' => false, 'error' => 'OTP provider API key is not configured or disabled.'];
         }
 
         $apiKey = trim($provider['api_key']);
@@ -44,10 +44,9 @@ class OtpProvider
         curl_close($ch);
 
         if ($response === false) {
-            return ['ok' => false, 'error' => 'cURL error: ' . $err];
+            return ['ok' => false, 'error' => 'cURL connection error: ' . $err];
         }
 
-        // SMS-Activate API can return strings like "ACCESS_BALANCE:100.50", "BAD_KEY", "NO_NUMBERS", etc.
         return [
             'ok' => true,
             'http_code' => $httpCode,
@@ -78,11 +77,9 @@ class OtpProvider
     {
         $provider = self::getActive();
         if (!$provider || empty($provider['api_key'])) {
-            return ['ok' => false, 'error' => 'No active OTP provider configured.'];
+            return ['ok' => false, 'error' => 'Active OTP provider not configured.'];
         }
 
-        // Fetch countries and prices / services
-        // SMS-Activate action=getPrices or action=getCountries
         $res = self::callApi('getPrices');
         if (!$res['ok']) {
             return $res;
@@ -90,7 +87,7 @@ class OtpProvider
 
         $data = json_decode($res['raw'], true);
         if (!is_array($data)) {
-            return ['ok' => false, 'error' => 'Invalid JSON response from provider: ' . substr($res['raw'], 0, 100)];
+            return ['ok' => false, 'error' => 'Invalid JSON response from provider.'];
         }
 
         $pdo = Database::getConnection();
@@ -99,12 +96,10 @@ class OtpProvider
 
         $pdo->beginTransaction();
         try {
-            // Data format in sms-activate: { "countryId": { "serviceId": { "count": X, "cost": Y } } }
             foreach ($data as $countryCode => $services) {
                 if (!is_array($services)) continue;
 
                 $countryName = 'Country ' . $countryCode;
-                // Upsert country
                 $cStmt = $pdo->prepare('INSERT INTO otp_countries (provider_id, country_code, name, service_count, is_enabled) VALUES (?, ?, ?, ?, 1) ON DUPLICATE KEY UPDATE service_count = VALUES(service_count)');
                 $cStmt->execute([$providerId, (string)$countryCode, $countryName, count($services)]);
 
@@ -112,9 +107,6 @@ class OtpProvider
                     $cost = (float) ($info['cost'] ?? 0);
                     $count = (int) ($info['count'] ?? 0);
                     $stockStatus = $count > 0 ? 'Available (' . $count . ')' : 'Out of stock';
-
-                    // Default margin 20%
-                    $marginVal = 20.0;
                     $sellingPrice = round($cost * 1.20, 2);
 
                     $sStmt = $pdo->prepare(
@@ -164,16 +156,14 @@ class OtpProvider
         $sellingPrice = (float) $service['price_per_number'];
         $cost = (float) $service['original_provider_rate'];
 
-        // Check wallet balance
         $uStmt = $pdo->prepare('SELECT wallet_balance FROM users WHERE id = ? FOR UPDATE');
         $uStmt->execute([$userId]);
         $currentBalance = (float) $uStmt->fetchColumn();
 
         if ($currentBalance < $sellingPrice) {
-            return ['ok' => false, 'error' => 'Insufficient wallet balance. Please add funds to your wallet.'];
+            return ['ok' => false, 'error' => 'Insufficient wallet balance. Please add funds.'];
         }
 
-        // Call provider API to get number: action=getNumber&service=X&country=Y
         $res = self::callApi('getNumber', [
             'service' => $service['external_service_id'],
             'country' => $service['country_code'],
@@ -184,7 +174,6 @@ class OtpProvider
         }
 
         $raw = $res['raw'];
-        // Expected response format: ACCESS_NUMBER:ACTIVATION_ID:PHONE
         if (!str_starts_with($raw, 'ACCESS_NUMBER:')) {
             return ['ok' => false, 'error' => 'Provider error: ' . $raw];
         }
@@ -200,11 +189,9 @@ class OtpProvider
 
         $pdo->beginTransaction();
         try {
-            // Deduct wallet balance once
             $newBalance = $currentBalance - $sellingPrice;
             $pdo->prepare('UPDATE users SET wallet_balance = ?, spent_total = spent_total + ? WHERE id = ?')->execute([$newBalance, $sellingPrice, $userId]);
 
-            // Create otp_order
             $oStmt = $pdo->prepare(
                 'INSERT INTO otp_orders (order_code, user_id, service_id, provider_id, provider_activation_id, phone_number, country_code, cost, charge, profit, status, expires_at)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "waiting", DATE_ADD(NOW(), INTERVAL 20 MINUTE))'
@@ -224,7 +211,6 @@ class OtpProvider
             ]);
             $orderId = (int) $pdo->lastInsertId();
 
-            // Record otp_transaction
             $pdo->prepare(
                 'INSERT INTO otp_transactions (user_id, type, amount, balance_before, balance_after, reference_id, description)
                  VALUES (?, "debit", ?, ?, ?, ?, ?)'
@@ -236,10 +222,6 @@ class OtpProvider
                 $orderId,
                 "OTP Number Purchase #{$orderCode} ({$phoneNumber})"
             ]);
-
-            // Record log
-            $pdo->prepare('INSERT INTO otp_order_logs (order_id, status, message, raw_response) VALUES (?, "waiting", ?, ?)')
-                ->execute([$orderId, 'Number acquired successfully', $raw]);
 
             $pdo->commit();
             return [
@@ -277,9 +259,8 @@ class OtpProvider
         }
 
         $raw = $res['raw'];
-        // Possible responses: STATUS_WAIT_CODE, STATUS_OK:12345, STATUS_CANCEL, STATUS_EXPIRED
         if ($raw === 'STATUS_WAIT_CODE') {
-            return ['ok' => true, 'status' => 'waiting', 'raw' => $raw];
+            return ['ok' => true, 'status' => 'waiting'];
         }
 
         if (str_starts_with($raw, 'STATUS_OK:')) {
@@ -295,7 +276,7 @@ class OtpProvider
             return ['ok' => true, 'status' => $newStatus];
         }
 
-        return ['ok' => true, 'status' => $order['status'], 'raw' => $raw];
+        return ['ok' => true, 'status' => $order['status']];
     }
 
     public static function cancelOrder(int $orderId): array
@@ -308,7 +289,6 @@ class OtpProvider
             return ['ok' => false, 'error' => 'Order cannot be cancelled.'];
         }
 
-        // action=setStatus&status=8&id=...
         $res = self::callApi('setStatus', ['status' => 8, 'id' => $order['provider_activation_id']]);
         if (!$res['ok']) {
             return $res;

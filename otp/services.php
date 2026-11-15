@@ -51,16 +51,15 @@ $pageTitle = 'OTP Services & Pricing';
       </div>
     </div>
     <nav class="space-y-1.5 flex-1">
-      <a href="otp-dashboard.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">OTP Home</a>
-      <a href="otp-countries.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Countries</a>
-      <a href="otp-services.php" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-purple-600 text-white font-semibold text-sm shadow-lg shadow-purple-600/25">Services & Pricing</a>
-      <a href="otp-buy.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Buy Number</a>
-      <a href="otp-orders.php?status=active" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Active OTP Orders</a>
-      <a href="otp-orders.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">OTP History</a>
-      <a href="../transactions.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Wallet & Transactions</a>
+      <a href="dashboard.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">OTP Home</a>
+      <a href="countries.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Countries</a>
+      <a href="services.php" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-purple-600 text-white font-semibold text-sm shadow-lg shadow-purple-600/25">Services & Pricing</a>
+      <a href="buy.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Buy Number</a>
+      <a href="orders.php?status=active" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Active OTP Orders</a>
+      <a href="orders.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">OTP History</a>
     </nav>
     <div class="pt-4 border-t border-purple-900/40">
-      <a href="otp-dashboard.php?mode=smm" class="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-800/50 font-bold text-xs transition">BACK TO SMM PANEL</a>
+      <a href="../dashboard.php" class="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-800/50 font-bold text-xs transition">BACK TO SMM PANEL</a>
     </div>
   </aside>
 
@@ -98,18 +97,16 @@ $pageTitle = 'OTP Services & Pricing';
           </thead>
           <tbody class="divide-y divide-purple-900/20 text-purple-100">
             <?php if (empty($services)): ?>
-              <tr><td colspan="5" class="py-12 text-center text-purple-400">No services found. Try importing services in the admin panel.</td></tr>
+              <tr><td colspan="5" class="py-12 text-center text-purple-400">No services found. Sync services from the admin panel.</td></tr>
             <?php else: ?>
               <?php foreach ($services as $s): ?>
                 <tr class="hover:bg-purple-900/10">
                   <td class="p-4 font-bold text-white"><?= e($s['name']) ?></td>
                   <td class="p-4 text-purple-300"><?= e($s['country_name'] ?? $s['country_code']) ?></td>
                   <td class="p-4 font-mono font-extrabold text-purple-200"><?= e($currencySymbol) ?><?= number_format((float)$s['price_per_number'], 2) ?></td>
-                  <td class="p-4">
-                    <span class="px-2.5 py-1 rounded-md text-xs font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30"><?= e($s['stock_status']) ?></span>
-                  </td>
+                  <td class="p-4"><span class="px-2.5 py-1 rounded-md text-xs font-semibold bg-purple-500/20 text-purple-300"><?= e($s['stock_status']) ?></span></td>
                   <td class="p-4 text-right">
-                    <a href="otp-buy.php?service_id=<?= (int)$s['id'] ?>" class="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition shadow-md shadow-purple-600/30">Buy Number</a>
+                    <a href="buy.php?country=<?= e($s['country_code']) ?>" class="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition">Buy Number</a>
                   </td>
                 </tr>
               <?php endforeach; ?>

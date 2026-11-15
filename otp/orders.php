@@ -48,16 +48,15 @@ $pageTitle = 'OTP Order History';
       </div>
     </div>
     <nav class="space-y-1.5 flex-1">
-      <a href="otp-dashboard.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">OTP Home</a>
-      <a href="otp-countries.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Countries</a>
-      <a href="otp-services.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Services & Pricing</a>
-      <a href="otp-buy.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Buy Number</a>
-      <a href="otp-orders.php?status=active" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Active OTP Orders</a>
-      <a href="otp-orders.php" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-purple-600 text-white font-semibold text-sm shadow-lg shadow-purple-600/25">OTP History</a>
-      <a href="../transactions.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Wallet & Transactions</a>
+      <a href="dashboard.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">OTP Home</a>
+      <a href="countries.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Countries</a>
+      <a href="services.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Services & Pricing</a>
+      <a href="buy.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Buy Number</a>
+      <a href="orders.php?status=active" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Active OTP Orders</a>
+      <a href="orders.php" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-purple-600 text-white font-semibold text-sm shadow-lg shadow-purple-600/25">OTP History</a>
     </nav>
     <div class="pt-4 border-t border-purple-900/40">
-      <a href="otp-dashboard.php?mode=smm" class="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-800/50 font-bold text-xs transition">BACK TO SMM PANEL</a>
+      <a href="../dashboard.php" class="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-800/50 font-bold text-xs transition">BACK TO SMM PANEL</a>
     </div>
   </aside>
 
@@ -72,18 +71,17 @@ $pageTitle = 'OTP Order History';
 
     <main class="flex-1 p-6 sm:p-8 space-y-6 max-w-[1400px] w-full mx-auto">
       <div class="flex items-center gap-2 flex-wrap">
-        <a href="otp-orders.php" class="px-4 py-2 rounded-xl text-xs font-bold <?= $statusFilter === '' ? 'bg-purple-600 text-white' : 'bg-purple-950/60 text-purple-300 hover:bg-purple-900/40' ?>">All</a>
-        <a href="otp-orders.php?status=waiting" class="px-4 py-2 rounded-xl text-xs font-bold <?= $statusFilter === 'waiting' ? 'bg-purple-600 text-white' : 'bg-purple-950/60 text-purple-300 hover:bg-purple-900/40' ?>">Waiting</a>
-        <a href="otp-orders.php?status=received" class="px-4 py-2 rounded-xl text-xs font-bold <?= $statusFilter === 'received' ? 'bg-purple-600 text-white' : 'bg-purple-950/60 text-purple-300 hover:bg-purple-900/40' ?>">Completed</a>
-        <a href="otp-orders.php?status=cancelled" class="px-4 py-2 rounded-xl text-xs font-bold <?= $statusFilter === 'cancelled' ? 'bg-purple-600 text-white' : 'bg-purple-950/60 text-purple-300 hover:bg-purple-900/40' ?>">Cancelled</a>
-        <a href="otp-orders.php?status=expired" class="px-4 py-2 rounded-xl text-xs font-bold <?= $statusFilter === 'expired' ? 'bg-purple-600 text-white' : 'bg-purple-950/60 text-purple-300 hover:bg-purple-900/40' ?>">Expired</a>
+        <a href="orders.php" class="px-4 py-2 rounded-xl text-xs font-bold <?= $statusFilter === '' ? 'bg-purple-600 text-white' : 'bg-purple-950/60 text-purple-300' ?>">All</a>
+        <a href="orders.php?status=waiting" class="px-4 py-2 rounded-xl text-xs font-bold <?= $statusFilter === 'waiting' ? 'bg-purple-600 text-white' : 'bg-purple-950/60 text-purple-300' ?>">Waiting</a>
+        <a href="orders.php?status=received" class="px-4 py-2 rounded-xl text-xs font-bold <?= $statusFilter === 'received' ? 'bg-purple-600 text-white' : 'bg-purple-950/60 text-purple-300' ?>">Completed</a>
+        <a href="orders.php?status=cancelled" class="px-4 py-2 rounded-xl text-xs font-bold <?= $statusFilter === 'cancelled' ? 'bg-purple-600 text-white' : 'bg-purple-950/60 text-purple-300' ?>">Cancelled</a>
       </div>
 
       <div class="rounded-2xl bg-[#16102e] border border-purple-950 overflow-hidden">
         <table class="w-full text-left text-sm">
           <thead>
             <tr class="text-xs font-semibold text-purple-400 border-b border-purple-900/40 bg-purple-950/20">
-              <th class="p-4">Order ID</th>
+              <th class="p-4">Order Code</th>
               <th class="p-4">Country</th>
               <th class="p-4">Service</th>
               <th class="p-4">Phone Number</th>
@@ -103,12 +101,8 @@ $pageTitle = 'OTP Order History';
                   <td class="p-4 font-sans"><?= e($o['country_name'] ?? $o['country_code']) ?></td>
                   <td class="p-4 font-sans font-medium"><?= e($o['service_name']) ?></td>
                   <td class="p-4"><?= e($o['phone_number']) ?></td>
-                  <td class="p-4 font-sans">
-                    <span class="px-2.5 py-1 rounded-md text-xs font-bold <?= $o['status'] === 'received' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : ($o['status'] === 'waiting' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30') ?>">
-                      <?= ucfirst($o['status']) ?>
-                    </span>
-                  </td>
-                  <td class="p-4 font-extrabold text-purple-300"><?= e($o['sms_code'] ?? '—') ?></td>
+                  <td class="p-4 font-sans"><span class="px-2.5 py-1 rounded-md text-xs font-bold bg-purple-500/20 text-purple-300"><?= ucfirst($o['status']) ?></span></td>
+                  <td class="p-4 font-extrabold text-emerald-400"><?= e($o['sms_code'] ?? '—') ?></td>
                   <td class="p-4 font-extrabold text-white"><?= e($currencySymbol) ?><?= number_format((float)$o['charge'], 2) ?></td>
                   <td class="p-4 text-purple-400 font-sans text-[11px]"><?= e($o['created_at']) ?></td>
                 </tr>

@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../../includes/auth.php';
 $admin = require_admin();
 $pdo = Database::getConnection();
 
@@ -8,14 +8,16 @@ $message = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (verify_csrf()) {
         $markup = (float)($_POST['global_markup'] ?? 20);
-        set_otp_setting('global_otp_markup', (string)$markup);
+        $pdo->prepare('INSERT INTO otp_settings (setting_key, setting_value) VALUES ("global_otp_markup", ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)')->execute([(string)$markup]);
         $pdo->prepare('UPDATE otp_services SET price_per_number = ROUND(original_provider_rate * (1 + (? / 100)), 2)')->execute([$markup]);
-        $message = 'Global markup updated and applied to all OTP services successfully.';
+        $message = 'Global markup updated and applied successfully.';
     }
 }
 
-$currentMarkup = otp_setting('global_otp_markup', '20');
-$pageTitle = 'OTP Pricing & Markup';
+$stmt = $pdo->prepare('SELECT setting_value FROM otp_settings WHERE setting_key = "global_otp_markup" LIMIT 1');
+$stmt->execute();
+$currentMarkup = $stmt->fetchColumn() ?: '20';
+$pageTitle = '3. Pricing Markup';
 ?>
 <!DOCTYPE html>
 <html lang="en" class="theme-classic">
@@ -26,7 +28,7 @@ $pageTitle = 'OTP Pricing & Markup';
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../assets/css/style.css">
+  <link rel="stylesheet" href="../../assets/css/style.css">
 </head>
 <body class="bg-[#0f0b1e] text-slate-100 font-['Plus_Jakarta_Sans',sans-serif] antialiased min-h-screen flex">
   <aside class="hidden lg:flex flex-col w-72 bg-[#16102e] border-r border-purple-900/40 p-6 shrink-0">
@@ -40,21 +42,21 @@ $pageTitle = 'OTP Pricing & Markup';
       </div>
     </div>
     <nav class="space-y-1.5 flex-1">
-      <a href="otp-dashboard.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Dashboard</a>
-      <a href="otp-api.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">API Settings</a>
-      <a href="otp-services.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Countries & Services</a>
-      <a href="otp-pricing.php" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-purple-600 text-white font-semibold text-sm shadow-lg shadow-purple-600/25">Pricing Markup</a>
-      <a href="otp-orders.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">OTP Orders</a>
-      <a href="otp-settings.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Settings</a>
+      <a href="dashboard.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">Dashboard</a>
+      <a href="api.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">1. API Settings</a>
+      <a href="services.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">2. Countries & Services</a>
+      <a href="pricing.php" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-purple-600 text-white font-semibold text-sm shadow-lg shadow-purple-600/25">3. Pricing</a>
+      <a href="orders.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">4. OTP Orders</a>
+      <a href="settings.php" class="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-200 hover:bg-purple-900/30 font-medium text-sm transition">5. Settings</a>
     </nav>
     <div class="pt-4 border-t border-purple-900/40">
-      <a href="dashboard.php" class="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-800/50 font-bold text-xs transition">Back to SMM Admin</a>
+      <a href="../../admin/dashboard.php" class="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-800/50 font-bold text-xs transition">Back to SMM Admin</a>
     </div>
   </aside>
 
   <div class="flex-1 flex flex-col min-w-0">
     <header class="h-20 bg-[#16102e]/90 backdrop-blur border-b border-purple-900/40 px-6 sm:px-8 flex items-center justify-between sticky top-0 z-30">
-      <h2 class="text-lg font-bold text-white">OTP Pricing & Markup Rules</h2>
+      <h2 class="text-lg font-bold text-white">3. Pricing Markup Rules</h2>
     </header>
 
     <main class="flex-1 p-6 sm:p-8 space-y-6 max-w-[900px] w-full mx-auto">
@@ -68,11 +70,10 @@ $pageTitle = 'OTP Pricing & Markup';
           <div>
             <label class="block text-xs font-bold uppercase tracking-wider text-purple-300 mb-2">Global Markup Percentage (%)</label>
             <input type="number" step="0.01" name="global_markup" value="<?= e($currentMarkup) ?>" required class="w-full px-4 py-3 rounded-xl bg-purple-950/60 border border-purple-900 text-white font-medium focus:outline-none focus:border-purple-600">
-            <p class="text-xs text-purple-400 mt-1">Example: Setting markup to 20% applies a 1.2x multiplier on provider base rates.</p>
           </div>
         </div>
         <div class="flex items-center justify-end pt-4 border-t border-purple-900/40">
-          <button type="submit" class="px-8 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm shadow-lg shadow-purple-600/30 transition">Update Pricing & Recalculate</button>
+          <button type="submit" class="px-8 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm shadow-lg transition">Update Pricing & Recalculate</button>
         </div>
       </form>
     </main>

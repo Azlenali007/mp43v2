@@ -44,6 +44,11 @@ class Migrator
                 self::execSqlBatch($pdo, $fixAuthSql);
             }
 
+            $rebuildOtpSql = @file_get_contents(APP_ROOT . '/database/updates/rebuild_otp_marketplace.sql');
+            if ($rebuildOtpSql !== false) {
+                self::execSqlBatch($pdo, $rebuildOtpSql);
+            }
+
             // Only seed defaults for brand-new databases where settings table is empty
             $settingsCount = (int) $pdo->query('SELECT COUNT(*) FROM settings')->fetchColumn();
             if ($settingsCount === 0) {
