@@ -1,0 +1,24 @@
+/* Installer Stylesheet */
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background-color: #F8F9FC;
+  color: #151515;
+}
+.install-card {
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 16px;
+  box-shadow: 0 12px 32px -12px rgba(21, 21, 21, 0.08);
+}
+.step-active {
+  background-color: #7138D8;
+  color: #FFFFFF;
+}
+.step-done {
+  background-color: #16A36A;
+  color: #FFFFFF;
+}
+.step-pending {
+  background-color: #F3F4F6;
+  color: #6B7280;
+}

@@ -1,0 +1,53 @@
+/* Primary Design System Stylesheet */
+:root {
+  --brand-purple: #7138D8;
+  --brand-purple-dark: #5B24C0;
+  --brand-black: #151515;
+  --brand-green: #16A36A;
+  --brand-white: #FFFFFF;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background-color: #F8F9FC;
+  color: #151515;
+  -webkit-font-smoothing: antialiased;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.font-mono-num {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Glass effect ONLY on selected KPI cards */
+.glass-kpi-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 10px 25px -15px rgba(21, 21, 21, 0.12);
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px -14px rgba(113, 56, 216, 0.16);
+}
+
+.sidebar-dark {
+  background-color: #151515;
+  color: #E5E7EB;
+}
+
+.hero-banner-gradient {
+  background: linear-gradient(125deg, #151515 0%, #2B125C 48%, #7138D8 100%);
+}
+
+/* Smooth Alpine cloak */
+[x-cloak] {
+  display: none !important;
+}
