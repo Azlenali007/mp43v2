@@ -8,7 +8,10 @@ function e(?string $value): string
 
 function redirect(string $path): never
 {
-    header('Location: ' . $path);
+    if (ob_get_level() > 0) {
+        @ob_clean();
+    }
+    header('Location: ' . $path, true, 302);
     exit;
 }
 

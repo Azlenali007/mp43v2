@@ -5,11 +5,12 @@ ensure_installed();
 require_once __DIR__ . '/../classes/Auth.php';
 
 if (current_admin()) {
-    redirect('dashboard.php');
+    redirect(app_root_prefix() . 'admin/dashboard.php');
 }
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    write_app_log('app', 'ADMIN_LOGIN_POST_RECEIVED');
     verify_csrf_or_abort();
     if (!check_rate_limit('admin_login', 8, 300)) {
         $error = 'Too many sign-in attempts. Please wait a few minutes.';
@@ -19,11 +20,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!is_valid_email($email) || $password === '') {
             $error = 'Enter a valid administrator email and password.';
         } else {
+            write_app_log('app', 'ADMIN_LOGIN_VALIDATION_PASSED');
             $res = Auth::loginAdmin($email, $password);
             if ($res['ok']) {
-                redirect('dashboard.php');
+                write_app_log('app', 'ADMIN_DATABASE_AUTH_SUCCESS & SESSION_CREATED for admin #' . ($res['admin']['id'] ?? 0));
+                write_app_log('app', 'ADMIN_REDIRECT_ATTEMPTED to admin/dashboard.php');
+                redirect(app_root_prefix() . 'admin/dashboard.php');
             }
-            $error = $res['error'];
+            $error = $res['error'] ?? 'Invalid admin credentials.';
+            write_app_log('app', 'ADMIN_LOGIN_FAILED: ' . $error);
         }
     }
 }
