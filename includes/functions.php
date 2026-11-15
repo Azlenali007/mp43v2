@@ -317,3 +317,37 @@ function payment_status_badge(string $status): string
     $cfg = $map[$status] ?? ['bg' => 'bg-slate-100 text-slate-700 border-slate-200', 'label' => ucfirst($status)];
     return '<span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium border ' . $cfg['bg'] . '">' . e($cfg['label']) . '</span>';
 }
+
+function otp_setting(string $key, string $default = ''): string
+{
+    try {
+        $pdo = Database::getConnection();
+        $stmt = $pdo->prepare('SELECT setting_value FROM otp_settings WHERE setting_key = ? LIMIT 1');
+        $stmt->execute([$key]);
+        $val = $stmt->fetchColumn();
+        return $val !== false && $val !== null ? (string) $val : $default;
+    } catch (Throwable $e) {
+        return $default;
+    }
+}
+
+function set_otp_setting(string $key, ?string $value): void
+{
+    try {
+        $pdo = Database::getConnection();
+        $stmt = $pdo->prepare('INSERT INTO otp_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)');
+        $stmt->execute([$key, $value]);
+    } catch (Throwable $e) {
+    }
+}
+
+function is_otp_enabled(): bool
+{
+    return otp_setting('otp_enabled', '1') === '1';
+}
+
+function is_otp_public_enabled(): bool
+{
+    return otp_setting('otp_public_enabled', '1') === '1';
+}
+

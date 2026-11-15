@@ -17,6 +17,11 @@ class Migrator
                 self::execSqlBatch($pdo, $schemaSql);
             }
 
+            $otpSchemaSql = @file_get_contents(APP_ROOT . '/database/otp_schema.sql');
+            if ($otpSchemaSql !== false) {
+                self::execSqlBatch($pdo, $otpSchemaSql);
+            }
+
             self::ensureCoreColumns($pdo);
 
             $mig002 = @file_get_contents(APP_ROOT . '/database/migrations/002_stability_and_theme_fixes.sql');

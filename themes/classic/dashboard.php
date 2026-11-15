@@ -28,6 +28,19 @@ ob_start();
     </div>
   </div>
 
+  <!-- NEED OTP? CLICK HERE Promo Card -->
+  <div class="rounded-2xl bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-950 p-6 text-white flex flex-col sm:flex-row items-center justify-between gap-6 shadow-lg border border-purple-800/30">
+    <div class="space-y-1">
+      <span class="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-xs font-bold uppercase tracking-wider">SMS Verification Marketplace</span>
+      <h2 class="text-lg font-extrabold tracking-tight">Looking for phone numbers & SMS verification?</h2>
+      <p class="text-xs text-purple-200">Access our independent OTP marketplace using your existing SMM wallet and login.</p>
+    </div>
+    <a href="<?= e($rp) ?>user/otp-dashboard.php" class="px-6 py-3 rounded-xl bg-white text-purple-950 font-extrabold text-xs hover:bg-purple-50 transition shadow-md whitespace-nowrap shrink-0 flex items-center gap-2">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="w-4 h-4"><path d="M12 5v14M5 12h14"/></svg>
+      NEED OTP? CLICK HERE
+    </a>
+  </div>
+
   <!-- 4 Glass KPI Cards -->
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
     <div class="glass-kpi-card rounded-2xl p-5 flex items-center gap-4">
