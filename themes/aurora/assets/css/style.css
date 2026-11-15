@@ -1,0 +1,84 @@
+:root {
+  --aurora-bg: #0B1220;
+  --aurora-surface: #111A2E;
+  --aurora-elevated: #17223B;
+  --aurora-sidebar: #090F1C;
+  --aurora-border: rgba(148, 163, 184, 0.16);
+  --aurora-teal: #2DD4BF;
+  --aurora-teal-deep: #0D9488;
+  --aurora-indigo: #4F46E5;
+  --aurora-text: #F1F5F9;
+  --aurora-muted: #94A3B8;
+}
+
+html.theme-aurora {
+  color-scheme: dark;
+  background-color: var(--aurora-bg);
+}
+
+body.theme-aurora {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: radial-gradient(circle at 12% 0%, rgba(13, 148, 136, 0.14), transparent 36%),
+              radial-gradient(circle at 88% 8%, rgba(79, 70, 229, 0.14), transparent 34%),
+              #0B1220;
+  color: var(--aurora-text);
+}
+
+.theme-aurora h1,
+.theme-aurora h2,
+.theme-aurora h3,
+.theme-aurora h4 {
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+}
+
+.aurora-sidebar {
+  background: linear-gradient(180deg, #090F1C 0%, #0D1628 100%);
+  border-right: 1px solid var(--aurora-border);
+}
+
+.aurora-surface {
+  background: rgba(17, 26, 46, 0.92);
+  border: 1px solid var(--aurora-border);
+  box-shadow: 0 18px 40px -24px rgba(2, 6, 23, 0.75);
+}
+
+.aurora-kpi {
+  background: linear-gradient(155deg, rgba(23, 34, 59, 0.95) 0%, rgba(17, 26, 46, 0.85) 100%);
+  border: 1px solid rgba(45, 212, 191, 0.18);
+  box-shadow: 0 10px 28px -18px rgba(13, 148, 136, 0.35);
+}
+
+.aurora-hero-banner {
+  background: linear-gradient(125deg, #0D9488 0%, #0F172A 52%, #312E81 100%);
+  border: 1px solid rgba(45, 212, 191, 0.25);
+}
+
+.aurora-btn-primary {
+  background: linear-gradient(135deg, #0D9488 0%, #4F46E5 100%);
+  color: #FFFFFF;
+}
+
+.aurora-btn-primary:hover {
+  filter: brightness(1.08);
+}
+
+.aurora-input {
+  background-color: #0B1220;
+  border-color: rgba(148, 163, 184, 0.24);
+  color: #F8FAFC;
+}
+
+.aurora-input::placeholder {
+  color: #64748B;
+}
+
+.aurora-input:focus {
+  border-color: #2DD4BF;
+  outline: none;
+}
+
+.aurora-dropdown {
+  background-color: #0F172A;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  box-shadow: 0 24px 50px -12px rgba(2, 6, 23, 0.85);
+}

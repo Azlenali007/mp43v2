@@ -1,0 +1,29 @@
+/* Classic Studio Theme — Primary Stylesheet */
+:root {
+  --classic-bg: #F8F9FC;
+  --classic-surface: #FFFFFF;
+  --classic-sidebar: #151515;
+  --classic-primary: #7138D8;
+  --classic-primary-hover: #5E28C2;
+  --classic-emerald: #16A36A;
+  --classic-border: #E2E8F0;
+  --classic-text: #151515;
+}
+
+body.theme-classic {
+  background-color: var(--classic-bg);
+  color: var(--classic-text);
+}
+
+.theme-classic .sidebar-dark {
+  background-color: var(--classic-sidebar);
+  color: #E5E7EB;
+}
+
+.theme-classic .hero-banner-gradient {
+  background: linear-gradient(125deg, #151515 0%, #2B125C 48%, #7138D8 100%);
+}
+
+.theme-classic .theme-search-dropdown {
+  box-shadow: 0 20px 40px -12px rgba(21, 21, 21, 0.16);
+}

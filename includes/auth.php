@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../classes/Database.php';
+require_once __DIR__ . '/../classes/Migrator.php';
 require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/csrf.php';
 require_once __DIR__ . '/validation.php';
@@ -10,6 +11,8 @@ require_once __DIR__ . '/icons.php';
 require_once __DIR__ . '/../classes/Currency.php';
 require_once __DIR__ . '/../classes/Theme.php';
 require_once __DIR__ . '/../classes/Tools.php';
+
+register_app_error_handlers();
 
 function ensure_installed(): void
 {
@@ -19,6 +22,13 @@ function ensure_installed(): void
             $prefix = app_root_prefix();
             redirect($prefix . 'install/');
         }
+        return;
+    }
+    try {
+        $pdo = Database::getConnection();
+        Migrator::ensureSchemaReady($pdo);
+    } catch (Throwable $e) {
+        write_app_log('app', 'Database connection/migration check error: ' . $e->getMessage());
     }
 }
 

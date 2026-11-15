@@ -29,25 +29,100 @@ class User
         return $newKey;
     }
 
-    public static function updateProfile(int $userId, string $name, string $phone, string $timezone, ?string $preferredCurrency = null): void
-    {
+    /**
+     * Save user profile details & preferred display currency safely.
+     * Automatically ensures schema columns exist if running on an older database.
+     */
+    public static function updateProfile(
+        int $userId,
+        string $name,
+        string $phone,
+        string $timezone,
+        ?string $preferredCurrency = null
+    ): array {
         $pdo = Database::getConnection();
-        if ($preferredCurrency !== null && $preferredCurrency !== '') {
-            $stmt = $pdo->prepare('UPDATE users SET name = ?, phone = ?, timezone = ?, preferred_currency = ? WHERE id = ?');
-            $stmt->execute([$name, $phone ?: null, $timezone, strtoupper($preferredCurrency), $userId]);
-        } else {
-            $stmt = $pdo->prepare('UPDATE users SET name = ?, phone = ?, timezone = ? WHERE id = ?');
-            $stmt->execute([$name, $phone ?: null, $timezone, $userId]);
+        $cleanTz = trim($timezone) !== '' ? trim($timezone) : 'Asia/Kolkata';
+        $cleanPhone = trim($phone) !== '' ? trim($phone) : null;
+        $normCur = ($preferredCurrency !== null && trim($preferredCurrency) !== '')
+            ? strtoupper(trim($preferredCurrency))
+            : null;
+
+        if ($normCur !== null && $normCur !== '__DEFAULT__') {
+            $curRow = Currency::find($normCur);
+            if (!$curRow || (int) ($curRow['is_enabled'] ?? 0) !== 1) {
+                return ['ok' => false, 'error' => 'Selected currency is not available or is disabled.'];
+            }
+            if ((float) ($curRow['exchange_rate'] ?? 0) <= 0) {
+                return ['ok' => false, 'error' => "Currency {$normCur} does not have a valid exchange rate configured yet."];
+            }
+        } elseif ($normCur === '__DEFAULT__') {
+            $normCur = null;
         }
-        log_activity('user', $userId, 'profile_updated', 'user', $userId);
+
+        try {
+            if ($preferredCurrency !== null) {
+                $stmt = $pdo->prepare('UPDATE users SET name = ?, phone = ?, timezone = ?, preferred_currency = ? WHERE id = ?');
+                $stmt->execute([$name, $cleanPhone, $cleanTz, $normCur, $userId]);
+            } else {
+                $stmt = $pdo->prepare('UPDATE users SET name = ?, phone = ?, timezone = ? WHERE id = ?');
+                $stmt->execute([$name, $cleanPhone, $cleanTz, $userId]);
+            }
+            log_activity('user', $userId, 'profile_updated', 'user', $userId, $normCur ? ('currency=' . $normCur) : null);
+            return ['ok' => true, 'currency' => $normCur];
+        } catch (PDOException $e) {
+            write_app_log('profile', 'User::updateProfile PDO error: ' . $e->getMessage());
+            // Auto-heal missing column on pre-upgrade installations and retry once
+            if (str_contains($e->getMessage(), 'preferred_currency') && class_exists('Migrator')) {
+                Migrator::ensureUpgraded($pdo);
+                try {
+                    $stmt = $pdo->prepare('UPDATE users SET name = ?, phone = ?, timezone = ?, preferred_currency = ? WHERE id = ?');
+                    $stmt->execute([$name, $cleanPhone, $cleanTz, $normCur, $userId]);
+                    return ['ok' => true, 'currency' => $normCur];
+                } catch (Throwable $retryErr) {
+                    write_app_log('profile', 'User::updateProfile retry failed: ' . $retryErr->getMessage());
+                }
+            }
+            return ['ok' => false, 'error' => 'Unable to save profile settings right now. Please try again.'];
+        } catch (Throwable $e) {
+            write_app_log('profile', 'User::updateProfile error: ' . $e->getMessage());
+            return ['ok' => false, 'error' => 'Unable to save profile settings right now. Please try again.'];
+        }
     }
 
-    public static function updatePreferredCurrency(int $userId, string $currencyCode): void
+    public static function updatePreferredCurrency(int $userId, string $currencyCode): array
     {
         $pdo = Database::getConnection();
-        $stmt = $pdo->prepare('UPDATE users SET preferred_currency = ? WHERE id = ?');
-        $stmt->execute([strtoupper(trim($currencyCode)), $userId]);
-        log_activity('user', $userId, 'currency_preference_updated', 'user', $userId, $currencyCode);
+        $code = strtoupper(trim($currencyCode));
+        $curRow = Currency::find($code);
+        if (!$curRow || (int) ($curRow['is_enabled'] ?? 0) !== 1) {
+            return ['ok' => false, 'error' => 'Selected currency is not enabled.'];
+        }
+        if ((float) ($curRow['exchange_rate'] ?? 0) <= 0) {
+            return ['ok' => false, 'error' => "Currency {$code} is enabled, but its exchange rate is not synced yet. Ask an administrator to sync exchange rates."];
+        }
+
+        try {
+            $stmt = $pdo->prepare('UPDATE users SET preferred_currency = ? WHERE id = ?');
+            $stmt->execute([$code, $userId]);
+            log_activity('user', $userId, 'currency_preference_updated', 'user', $userId, $code);
+            return ['ok' => true, 'currency' => $code];
+        } catch (PDOException $e) {
+            write_app_log('profile', 'User::updatePreferredCurrency PDO error: ' . $e->getMessage());
+            if (str_contains($e->getMessage(), 'preferred_currency') && class_exists('Migrator')) {
+                Migrator::ensureUpgraded($pdo);
+                try {
+                    $stmt = $pdo->prepare('UPDATE users SET preferred_currency = ? WHERE id = ?');
+                    $stmt->execute([$code, $userId]);
+                    return ['ok' => true, 'currency' => $code];
+                } catch (Throwable $retryErr) {
+                    write_app_log('profile', 'User::updatePreferredCurrency retry failed: ' . $retryErr->getMessage());
+                }
+            }
+            return ['ok' => false, 'error' => 'Failed to persist currency preference.'];
+        } catch (Throwable $e) {
+            write_app_log('profile', 'User::updatePreferredCurrency error: ' . $e->getMessage());
+            return ['ok' => false, 'error' => 'Failed to persist currency preference.'];
+        }
     }
 
     public static function changePassword(int $userId, string $currentPassword, string $newPassword): array

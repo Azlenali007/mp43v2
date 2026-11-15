@@ -14,11 +14,77 @@ function redirect(string $path): never
 
 function json_response(array $data, int $statusCode = 200): never
 {
+    if (ob_get_level() > 0) {
+        @ob_clean();
+    }
     http_response_code($statusCode);
     header('Content-Type: application/json; charset=utf-8');
     header('X-Content-Type-Options: nosniff');
     echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
+}
+
+function is_json_request(): bool
+{
+    $script = $_SERVER['SCRIPT_NAME'] ?? '';
+    $accept = $_SERVER['HTTP_ACCEPT'] ?? '';
+    $xhr = $_SERVER['HTTP_X_REQUESTED_WITH'] ?? '';
+    return str_contains($script, '/api/')
+        || str_contains(strtolower($accept), 'application/json')
+        || strtolower($xhr) === 'xmlhttprequest';
+}
+
+function register_app_error_handlers(): void
+{
+    static $registered = false;
+    if ($registered || PHP_SAPI === 'cli') {
+        return;
+    }
+    $registered = true;
+
+    @ini_set('display_errors', '0');
+    @ini_set('log_errors', '1');
+
+    set_error_handler(static function (int $severity, string $message, string $file, int $line): bool {
+        if (!(error_reporting() & $severity)) {
+            return false;
+        }
+        write_app_log('app', sprintf('PHP [%d] %s in %s:%d', $severity, $message, $file, $line));
+        return true;
+    });
+
+    set_exception_handler(static function (Throwable $e): void {
+        write_app_log('app', sprintf('Uncaught %s: %s in %s:%d', get_class($e), $e->getMessage(), $e->getFile(), $e->getLine()));
+        if (headers_sent()) {
+            exit;
+        }
+        if (is_json_request()) {
+            json_response([
+                'ok'      => false,
+                'success' => false,
+                'message' => 'An unexpected server error occurred. Please try again.',
+            ], 500);
+        }
+        http_response_code(500);
+        echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Service Notice</title>'
+            . '<style>body{font-family:system-ui,-apple-system,sans-serif;background:#F8F9FC;color:#151515;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px}'
+            . '.box{max-width:460px;background:#fff;border:1px solid #E2E8F0;border-radius:16px;padding:28px;box-shadow:0 12px 30px -15px rgba(0,0,0,.1)}'
+            . 'h1{margin:0 0 8px;font-size:18px}p{margin:0 0 18px;font-size:14px;color:#475569;line-height:1.5}'
+            . 'a{display:inline-block;padding:10px 18px;border-radius:10px;background:#7138D8;color:#fff;text-decoration:none;font-size:13px;font-weight:600}</style></head>'
+            . '<body><div class="box"><h1>Unable to Complete Request</h1><p>A temporary issue occurred while processing your request. Technical details have been recorded safely.</p>'
+            . '<a href="javascript:history.back()">Go Back</a></div></body></html>';
+        exit;
+    });
+}
+
+function write_app_log(string $channel, string $message): void
+{
+    $dir = defined('LOGS_PATH') ? LOGS_PATH : (__DIR__ . '/../storage/logs');
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0755, true);
+    }
+    $line = '[' . date('Y-m-d H:i:s') . '] ' . $message . PHP_EOL;
+    @file_put_contents($dir . '/' . preg_replace('/[^a-z0-9_-]/i', '', $channel) . '.log', $line, FILE_APPEND | LOCK_EX);
 }
 
 function set_flash(string $type, string $message): void
@@ -250,13 +316,4 @@ function payment_status_badge(string $status): string
     ];
     $cfg = $map[$status] ?? ['bg' => 'bg-slate-100 text-slate-700 border-slate-200', 'label' => ucfirst($status)];
     return '<span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium border ' . $cfg['bg'] . '">' . e($cfg['label']) . '</span>';
-}
-
-function write_app_log(string $channel, string $message): void
-{
-    if (!is_dir(LOGS_PATH)) {
-        @mkdir(LOGS_PATH, 0755, true);
-    }
-    $line = '[' . date('Y-m-d H:i:s') . '] ' . $message . PHP_EOL;
-    @file_put_contents(LOGS_PATH . '/' . preg_replace('/[^a-z0-9_-]/i', '', $channel) . '.log', $line, FILE_APPEND | LOCK_EX);
 }

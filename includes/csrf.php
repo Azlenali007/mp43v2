@@ -29,9 +29,17 @@ function verify_csrf_or_abort(bool $json = false): void
     $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? null;
     if (!verify_csrf(is_string($token) ? $token : null)) {
         if ($json) {
+            if (ob_get_level() > 0) {
+                @ob_clean();
+            }
             http_response_code(419);
             header('Content-Type: application/json; charset=utf-8');
-            echo json_encode(['success' => false, 'message' => 'Invalid or expired security token. Please refresh and try again.']);
+            header('X-Content-Type-Options: nosniff');
+            echo json_encode([
+                'ok'      => false,
+                'success' => false,
+                'message' => 'Invalid or expired security token. Please refresh the page and try again.',
+            ]);
             exit;
         }
         http_response_code(419);

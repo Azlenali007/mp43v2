@@ -59,15 +59,8 @@ $newOrderPayload = [
     'apiBase'           => app_root_prefix(),
 ];
 
-$pageTitle = 'New Order';
-require __DIR__ . '/includes/user-header.php';
-
-$themePage = Theme::componentPath('pages/new-order.php');
-if ($themePage && is_file($themePage)) {
-    require $themePage;
-} else {
-    require __DIR__ . '/themes/classic/pages/new-order.php';
-}
-?>
-<script src="<?= e(app_root_prefix()) ?>assets/js/orders.js"></script>
-<?php require __DIR__ . '/includes/user-footer.php'; ?>
+Theme::renderPage('new-order.php', [
+    'pageTitle'       => 'New Order',
+    'user'            => $user,
+    'newOrderPayload' => $newOrderPayload,
+]);

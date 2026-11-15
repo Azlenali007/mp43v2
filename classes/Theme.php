@@ -4,6 +4,23 @@ declare(strict_types=1);
 class Theme
 {
     private static ?array $resolvedTheme = null;
+    private static ?array $sharedCtxCache = null;
+
+    public static function safeSlug(?string $slug): string
+    {
+        return preg_replace('/[^a-z0-9_-]/i', '', (string) $slug) ?: '';
+    }
+
+    public static function safeRelPath(string $relPath): string
+    {
+        $clean = str_replace('\\', '/', trim($relPath));
+        $clean = ltrim($clean, '/');
+        $clean = str_replace("\0", '', $clean);
+        if (str_contains($clean, '..')) {
+            return '';
+        }
+        return $clean;
+    }
 
     public static function discoverFilesystemThemes(): array
     {
@@ -16,12 +33,19 @@ class Theme
             if ($entry === '.' || $entry === '..') {
                 continue;
             }
-            $manifest = $themesDir . '/' . $entry . '/theme.php';
-            if (is_dir($themesDir . '/' . $entry) && is_file($manifest)) {
+            $slugSafe = self::safeSlug($entry);
+            if ($slugSafe === '' || $slugSafe !== $entry) {
+                continue;
+            }
+            $manifest = $themesDir . '/' . $slugSafe . '/theme.php';
+            if (is_dir($themesDir . '/' . $slugSafe) && is_file($manifest)) {
                 $meta = require $manifest;
                 if (is_array($meta) && !empty($meta['slug'])) {
-                    $meta['slug'] = preg_replace('/[^a-z0-9_-]/i', '', (string) $meta['slug']);
-                    $found[$meta['slug']] = $meta;
+                    $s = self::safeSlug((string) $meta['slug']);
+                    if ($s !== '') {
+                        $meta['slug'] = $s;
+                        $found[$s] = $meta;
+                    }
                 }
             }
         }
@@ -56,7 +80,6 @@ class Theme
                     $slug === 'classic' ? 1 : 0,
                 ]);
             }
-            // Ensure exactly one active theme
             $activeCount = (int) $pdo->query('SELECT COUNT(*) FROM themes WHERE is_active = 1 AND status = "active"')->fetchColumn();
             if ($activeCount === 0) {
                 $pdo->exec('UPDATE themes SET is_active = 1 WHERE slug = "classic" LIMIT 1');
@@ -66,8 +89,8 @@ class Theme
     }
 
     /**
-     * Resolves the global active theme from MySQL.
-     * ONLY an authenticated administrator may pass ?preview_theme=<slug> to preview before activation.
+     * Resolves the active theme from MySQL with strict directory validation & classic fallback.
+     * ONLY authenticated administrators may preview via ?preview_theme=<slug>.
      */
     public static function current(): array
     {
@@ -84,25 +107,33 @@ class Theme
         try {
             $pdo = Database::getConnection();
 
-            // Admin-only temporary theme preview guard
             if (!empty($_GET['preview_theme']) && function_exists('current_admin') && current_admin() !== null) {
-                $reqSlug = preg_replace('/[^a-z0-9_-]/i', '', (string) $_GET['preview_theme']);
-                $pStmt = $pdo->prepare('SELECT * FROM themes WHERE slug = ? AND status = "active" LIMIT 1');
-                $pStmt->execute([$reqSlug]);
-                $previewRow = $pStmt->fetch();
-                if ($previewRow && is_dir(APP_ROOT . '/themes/' . $previewRow['slug'])) {
-                    self::$resolvedTheme = $previewRow;
-                    return self::$resolvedTheme;
+                $reqSlug = self::safeSlug((string) $_GET['preview_theme']);
+                if ($reqSlug !== '') {
+                    $pStmt = $pdo->prepare('SELECT * FROM themes WHERE slug = ? AND status = "active" LIMIT 1');
+                    $pStmt->execute([$reqSlug]);
+                    $previewRow = $pStmt->fetch();
+                    if ($previewRow && is_dir(APP_ROOT . '/themes/' . $previewRow['slug']) && is_file(APP_ROOT . '/themes/' . $previewRow['slug'] . '/theme.php')) {
+                        self::$resolvedTheme = $previewRow;
+                        return self::$resolvedTheme;
+                    }
                 }
             }
 
             $stmt = $pdo->query('SELECT * FROM themes WHERE is_active = 1 AND status = "active" LIMIT 1');
             $row = $stmt->fetch();
-            if ($row && is_dir(APP_ROOT . '/themes/' . $row['slug'])) {
-                self::$resolvedTheme = $row;
-                return self::$resolvedTheme;
+            if ($row) {
+                $slug = self::safeSlug((string) ($row['slug'] ?? ''));
+                if ($slug !== '' && is_dir(APP_ROOT . '/themes/' . $slug) && is_file(APP_ROOT . '/themes/' . $slug . '/theme.php')) {
+                    $row['slug'] = $slug;
+                    self::$resolvedTheme = $row;
+                    return self::$resolvedTheme;
+                }
             }
         } catch (Throwable $e) {
+            if (function_exists('write_app_log')) {
+                write_app_log('theme', 'Theme::current fallback to classic: ' . $e->getMessage());
+            }
         }
 
         self::$resolvedTheme = $fallback;
@@ -116,7 +147,7 @@ class Theme
 
     public static function activate(string $slug, int $adminId): array
     {
-        $slug = preg_replace('/[^a-z0-9_-]/i', '', $slug);
+        $slug = self::safeSlug($slug);
         $fs = self::discoverFilesystemThemes();
         if (!isset($fs[$slug])) {
             return ['ok' => false, 'error' => 'Selected theme files were not found in /themes/.'];
@@ -138,6 +169,7 @@ class Theme
             set_setting('active_theme', $slug, 'themes');
             $pdo->commit();
             self::$resolvedTheme = null;
+            self::$sharedCtxCache = null;
             log_activity('admin', $adminId, 'theme_activated', 'theme', (int) $theme['id'], "Activated theme: {$slug}");
             return ['ok' => true, 'message' => "Theme '{$theme['name']}' is now active globally."];
         } catch (Throwable $e) {
@@ -148,25 +180,164 @@ class Theme
         }
     }
 
-    public static function componentPath(string $relPath): ?string
+    public static function pagePath(string $pageFile): string
     {
+        $clean = self::safeRelPath($pageFile);
+        if ($clean === '' || !str_ends_with($clean, '.php')) {
+            return APP_ROOT . '/themes/classic/index.php';
+        }
         $slug = self::activeSlug();
-        $candidate = APP_ROOT . '/themes/' . $slug . '/' . ltrim($relPath, '/');
+        $candidate = APP_ROOT . '/themes/' . $slug . '/' . $clean;
         if (is_file($candidate)) {
             return $candidate;
         }
-        $classicFallback = APP_ROOT . '/themes/classic/' . ltrim($relPath, '/');
+        $classicFallback = APP_ROOT . '/themes/classic/' . $clean;
+        if (is_file($classicFallback)) {
+            return $classicFallback;
+        }
+        throw new RuntimeException("Theme page template not found: {$clean}");
+    }
+
+    public static function layoutPath(string $layoutName): string
+    {
+        $safeName = self::safeSlug($layoutName);
+        if ($safeName === '') {
+            $safeName = 'main';
+        }
+        $slug = self::activeSlug();
+        $candidate = APP_ROOT . '/themes/' . $slug . '/layouts/' . $safeName . '.php';
+        if (is_file($candidate)) {
+            return $candidate;
+        }
+        return APP_ROOT . '/themes/classic/layouts/' . $safeName . '.php';
+    }
+
+    public static function componentPath(string $relPath): ?string
+    {
+        $clean = self::safeRelPath($relPath);
+        if ($clean === '') {
+            return null;
+        }
+        if (!str_contains($clean, '/')) {
+            $clean = 'components/' . $clean;
+        }
+        $slug = self::activeSlug();
+        $candidate = APP_ROOT . '/themes/' . $slug . '/' . $clean;
+        if (is_file($candidate)) {
+            return $candidate;
+        }
+        $classicFallback = APP_ROOT . '/themes/classic/' . $clean;
         return is_file($classicFallback) ? $classicFallback : null;
     }
 
     public static function assetUrl(string $relPath): string
     {
+        $clean = self::safeRelPath($relPath);
         $prefix = app_root_prefix();
         $slug = self::activeSlug();
-        $candidate = APP_ROOT . '/themes/' . $slug . '/assets/' . ltrim($relPath, '/');
-        if (is_file($candidate)) {
-            return $prefix . 'themes/' . $slug . '/assets/' . ltrim($relPath, '/');
+        $candidate = APP_ROOT . '/themes/' . $slug . '/assets/' . $clean;
+        if ($clean !== '' && is_file($candidate)) {
+            return $prefix . 'themes/' . $slug . '/assets/' . $clean . '?v=' . (@filemtime($candidate) ?: '1');
         }
-        return $prefix . 'themes/classic/assets/' . ltrim($relPath, '/');
+        $fallback = APP_ROOT . '/themes/classic/assets/' . $clean;
+        $ver = is_file($fallback) ? (@filemtime($fallback) ?: '1') : '1';
+        return $prefix . 'themes/classic/assets/' . $clean . '?v=' . $ver;
+    }
+
+    /**
+     * Build common shared view variables used by headers, sidebars, currency dropdowns, and layouts.
+     */
+    public static function sharedViewContext(?array $userOverride = null, bool $consumeFlash = true): array
+    {
+        if (self::$sharedCtxCache === null) {
+            $user = $userOverride ?? (function_exists('current_user') ? current_user() : null);
+            $siteName = get_setting('site_name', 'CrownSMM');
+            $rp = app_root_prefix();
+            $currentScript = basename($_SERVER['SCRIPT_NAME'] ?? '');
+            $activeTheme = self::current();
+            $activeThemeSlug = (string) ($activeTheme['slug'] ?? 'classic');
+            $isAdminPreview = !empty($_GET['preview_theme']) && function_exists('current_admin') && current_admin() !== null;
+
+            $unreadCount = 0;
+            $notifications = [];
+            if (!empty($user)) {
+                try {
+                    $pdo = Database::getConnection();
+                    $nStmt = $pdo->prepare('SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 8');
+                    $nStmt->execute([(int) $user['id']]);
+                    $notifications = $nStmt->fetchAll();
+                    foreach ($notifications as $n) {
+                        if ((int) $n['is_read'] === 0) {
+                            $unreadCount++;
+                        }
+                    }
+                } catch (Throwable $e) {
+                }
+            }
+
+            $initials = 'U';
+            if (!empty($user['name'])) {
+                $parts = preg_split('/\s+/', trim((string) $user['name']));
+                $initials = strtoupper(substr($parts[0] ?? 'U', 0, 1) . substr($parts[1] ?? '', 0, 1)) ?: 'U';
+            }
+
+            $displayCurrency = Currency::getUserDisplay($user);
+            $enabledCurrencies = Currency::all(true, false);
+            $readyCurrencies = Currency::all(true, true);
+
+            self::$sharedCtxCache = [
+                'siteName'          => $siteName,
+                'rootPrefix'        => $rp,
+                'rp'                => $rp,
+                'currentScript'     => $currentScript,
+                'activeTheme'       => $activeTheme,
+                'activeThemeSlug'   => $activeThemeSlug,
+                'isAdminPreview'    => $isAdminPreview,
+                'unreadCount'       => $unreadCount,
+                'notifications'     => $notifications,
+                'initials'          => $initials,
+                'displayCurrency'   => $displayCurrency,
+                'enabledCurrencies' => $enabledCurrencies,
+                'readyCurrencies'   => $readyCurrencies,
+                'loggedUser'        => $user,
+                'user'              => $user,
+                'csrfToken'         => csrf_token(),
+            ];
+        }
+
+        $ctx = self::$sharedCtxCache;
+        if ($userOverride !== null) {
+            $ctx['user'] = $userOverride;
+            $ctx['loggedUser'] = $userOverride;
+            $ctx['displayCurrency'] = Currency::getUserDisplay($userOverride);
+        }
+        $ctx['flash'] = $consumeFlash ? get_flash() : null;
+        return $ctx;
+    }
+
+    public static function renderPage(string $pageFile, array $data = []): void
+    {
+        if (!defined('THEME_RENDER_CTX')) {
+            define('THEME_RENDER_CTX', true);
+        }
+        $userOverride = array_key_exists('user', $data) && is_array($data['user']) ? $data['user'] : null;
+        $ctx = array_merge(self::sharedViewContext($userOverride, true), $data);
+        $path = self::pagePath($pageFile);
+        extract($ctx, EXTR_SKIP);
+        require $path;
+    }
+
+    public static function renderLayoutPart(string $layoutName, string $layoutMode, array $data = []): void
+    {
+        if (!defined('THEME_RENDER_CTX')) {
+            define('THEME_RENDER_CTX', true);
+        }
+        $userOverride = array_key_exists('user', $data) && is_array($data['user']) ? $data['user'] : null;
+        $consumeFlash = ($layoutMode === 'header');
+        $ctx = array_merge(self::sharedViewContext($userOverride, $consumeFlash), $data);
+        $ctx['layoutMode'] = $layoutMode;
+        $path = self::layoutPath($layoutName);
+        extract($ctx, EXTR_SKIP);
+        require $path;
     }
 }
