@@ -1,18 +1,19 @@
 <?php
 declare(strict_types=1);
+$rp = $rootPrefix ?? app_root_prefix();
 $navItems = [
     ['href' => 'dashboard.php', 'label' => 'Dashboard', 'icon' => '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>'],
     ['href' => 'new-order.php', 'label' => 'New Order', 'icon' => '<rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>'],
     ['href' => 'bulk-order.php', 'label' => 'Bulk Orders', 'icon' => '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>'],
-    ['href' => 'services.php', 'label' => 'Services', 'icon' => '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>'],
+    ['href' => $rp . 'services.php', 'match' => 'services.php', 'label' => 'Services', 'icon' => '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>'],
     ['href' => 'orders.php', 'label' => 'Orders', 'icon' => '<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>'],
     ['href' => 'add-funds.php', 'label' => 'Add Funds', 'icon' => '<rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>'],
     ['href' => 'transactions.php', 'label' => 'Transactions', 'icon' => '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'],
     ['href' => 'tickets.php', 'label' => 'Support Tickets', 'icon' => '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'],
     ['href' => 'api-access.php', 'label' => 'API Access', 'icon' => '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>'],
     ['href' => 'profile.php', 'label' => 'Account Settings', 'icon' => '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>'],
-    ['href' => 'faq.php', 'label' => 'FAQ', 'icon' => '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>'],
-    ['href' => 'contact.php', 'label' => 'Contact Us', 'icon' => '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>'],
+    ['href' => $rp . 'faq.php', 'match' => 'faq.php', 'label' => 'FAQ', 'icon' => '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>'],
+    ['href' => $rp . 'contact.php', 'match' => 'contact.php', 'label' => 'Contact Us', 'icon' => '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>'],
 ];
 ?>
 <!-- Mobile Backdrop -->
@@ -37,7 +38,10 @@ $navItems = [
 
     <nav class="p-3 space-y-1">
       <?php foreach ($navItems as $item): ?>
-        <?php $active = ($currentScript === $item['href']) || ($item['href'] === 'orders.php' && $currentScript === 'order-details.php') || ($item['href'] === 'tickets.php' && $currentScript === 'ticket-details.php'); ?>
+        <?php
+        $matchKey = $item['match'] ?? $item['href'];
+        $active = ($currentScript === $matchKey) || ($matchKey === 'orders.php' && $currentScript === 'order-details.php') || ($matchKey === 'tickets.php' && $currentScript === 'ticket-details.php');
+        ?>
         <a href="<?= e($item['href']) ?>" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition <?= $active ? 'bg-[#7138D8] text-white shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white' ?>">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0"><?= $item['icon'] ?></svg>
           <span class="whitespace-nowrap truncate"><?= e($item['label']) ?></span>

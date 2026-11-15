@@ -2,8 +2,9 @@ const createNewOrderApp = (initialData) => ({
   categories: initialData.categories || [],
   services: initialData.services || [],
   icons: initialData.icons || {},
-    currencySymbol: initialData.currencySymbol || '₹',
-    walletBalance: Number(initialData.walletBalance || 0),
+  currencySymbol: initialData.currencySymbol || '₹',
+  walletBalance: Number(initialData.walletBalance || 0),
+  apiBase: initialData.apiBase || '',
 
     categorySearch: '',
     serviceSearch: '',
@@ -94,7 +95,7 @@ const createNewOrderApp = (initialData) => ({
       }
       this.submitting = true;
       try {
-        const res = await window.SMMApp.postJson('api/new-order.php', {
+        const res = await window.SMMApp.postJson(this.apiBase + 'api/new-order.php', {
           service_id: Number(this.selectedService.id),
           link: this.link,
           quantity: Number(this.quantity)

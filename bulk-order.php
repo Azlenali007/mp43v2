@@ -52,7 +52,7 @@ require __DIR__ . '/includes/user-header.php';
       <h1 class="text-2xl font-bold text-[#151515]">Bulk Order</h1>
       <p class="text-sm text-slate-600 mt-1">Submit up to 50 orders in one batch using pipe-separated lines.</p>
     </div>
-    <a href="services.php" class="px-4 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-[#151515] hover:bg-slate-50 self-start">View Service IDs</a>
+    <a href="<?= e(app_root_prefix()) ?>services.php" class="px-4 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-[#151515] hover:bg-slate-50 self-start">View Service IDs</a>
   </div>
 
   <?php if ($error): ?>

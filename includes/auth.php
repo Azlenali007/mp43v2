@@ -13,7 +13,7 @@ function ensure_installed(): void
     if (!app_is_installed()) {
         $script = $_SERVER['SCRIPT_NAME'] ?? '';
         if (!str_contains($script, '/install/')) {
-            $prefix = str_contains($script, '/admin/') ? '../' : '';
+            $prefix = app_root_prefix();
             redirect($prefix . 'install/');
         }
     }
@@ -51,7 +51,7 @@ function require_user(): array
     $user = current_user();
     if (!$user) {
         set_flash('warning', 'Please sign in to access your account.');
-        redirect('login.php');
+        redirect(app_root_prefix() . 'login.php');
     }
     return $user;
 }

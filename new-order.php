@@ -33,6 +33,7 @@ require __DIR__ . '/includes/user-header.php';
     "walletBalance"     => (float) $user["wallet_balance"],
     "defaultCategoryId" => $defaultCategoryId,
     "defaultServiceId"  => $defaultServiceId,
+    "apiBase"           => app_root_prefix(),
 ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>)'>
 
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -216,5 +217,5 @@ require __DIR__ . '/includes/user-header.php';
     </div>
   <?php endif; ?>
 </div>
-<script src="assets/js/orders.js"></script>
+<script src="<?= e(app_root_prefix()) ?>assets/js/orders.js"></script>
 <?php require __DIR__ . '/includes/user-footer.php'; ?>

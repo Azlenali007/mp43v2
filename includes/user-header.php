@@ -2,6 +2,7 @@
 declare(strict_types=1);
 $siteName = get_setting('site_name', 'CrownSMM');
 $currentScript = basename($_SERVER['SCRIPT_NAME'] ?? '');
+$rootPrefix = app_root_prefix();
 $flash = get_flash();
 
 $unreadCount = 0;
@@ -39,8 +40,8 @@ if (!empty($user['name'])) {
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="assets/css/style.css">
-  <link rel="stylesheet" href="assets/css/custom.css">
+  <link rel="stylesheet" href="<?= e($rootPrefix) ?>assets/css/style.css">
+  <link rel="stylesheet" href="<?= e($rootPrefix) ?>assets/css/custom.css">
 </head>
 <body class="bg-[#F8F9FC] text-[#151515] min-h-screen" x-data="{ mobileMenuOpen: false }">
   <div class="min-h-screen flex">
@@ -53,7 +54,7 @@ if (!empty($user['name'])) {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
           </button>
 
-          <form action="services.php" method="GET" class="hidden sm:flex items-center flex-1 max-w-md relative">
+          <form action="<?= e($rootPrefix) ?>services.php" method="GET" class="hidden sm:flex items-center flex-1 max-w-md relative">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input type="text" name="q" value="<?= e($_GET['q'] ?? '') ?>" placeholder="Search services..." class="w-full pl-10 pr-4 py-2 rounded-xl bg-[#F8F9FC] border border-slate-200 text-sm focus:outline-none focus:border-[#7138D8] focus:bg-white transition">
           </form>
@@ -76,7 +77,7 @@ if (!empty($user['name'])) {
               <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
                 <span class="text-sm font-semibold text-[#151515]">Notifications</span>
                 <?php if ($unreadCount > 0): ?>
-                  <form method="POST" action="api/wallet.php" class="inline">
+                  <form method="POST" action="<?= e($rootPrefix) ?>api/wallet.php" class="inline">
                     <?= csrf_field() ?>
                     <input type="hidden" name="action" value="mark_notifications_read">
                     <button type="submit" class="text-xs font-medium text-[#7138D8] hover:underline">Mark all read</button>
@@ -111,7 +112,7 @@ if (!empty($user['name'])) {
               <a href="transactions.php" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Transactions</a>
               <a href="api-access.php" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">API Access</a>
               <div class="my-1 border-t border-slate-100"></div>
-              <a href="logout.php" class="block px-4 py-2 text-sm text-rose-600 font-medium hover:bg-rose-50">Sign Out</a>
+              <a href="<?= e($rootPrefix) ?>logout.php" class="block px-4 py-2 text-sm text-rose-600 font-medium hover:bg-rose-50">Sign Out</a>
             </div>
           </div>
         </div>

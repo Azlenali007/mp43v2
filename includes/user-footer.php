@@ -23,7 +23,8 @@ $mobileTabs = [
     <?php endforeach; ?>
   </nav>
 
-  <script src="assets/js/app.js"></script>
-  <script src="assets/js/dashboard.js"></script>
+  <?php $rp = $rootPrefix ?? app_root_prefix(); ?>
+  <script src="<?= e($rp) ?>assets/js/app.js"></script>
+  <script src="<?= e($rp) ?>assets/js/dashboard.js"></script>
 </body>
 </html>

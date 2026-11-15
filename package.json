@@ -3,9 +3,9 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "dev": "sh -c 'if ! service mariadb status >/dev/null 2>&1; then service mariadb start >/dev/null 2>&1 || true; fi; exec php -S 0.0.0.0:3000 -t smm-panel preview-router.php' --",
-    "build": "find smm-panel -name '*.php' -print0 | xargs -0 -n1 php -l >/dev/null",
-    "lint": "find smm-panel -name '*.php' -print0 | xargs -0 -n1 php -l >/dev/null"
+    "dev": "sh -c 'if ! service mariadb status >/dev/null 2>&1; then service mariadb start >/dev/null 2>&1 || true; fi; exec php -S 0.0.0.0:3000 preview-router.php' --",
+    "build": "find . -maxdepth 3 -name '*.php' -not -path './preview-router.php' -print0 | xargs -0 -n1 php -l >/dev/null",
+    "lint": "find . -maxdepth 3 -name '*.php' -not -path './preview-router.php' -print0 | xargs -0 -n1 php -l >/dev/null"
   },
   "dependencies": {},
   "devDependencies": {}

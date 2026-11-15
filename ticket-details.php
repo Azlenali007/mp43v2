@@ -55,7 +55,7 @@ require __DIR__ . '/includes/user-header.php';
         </div>
         <p class="text-sm text-slate-700 whitespace-pre-line"><?= e($m['message']) ?></p>
         <?php if (!empty($m['attachment_path'])): ?>
-          <a href="<?= e($m['attachment_path']) ?>" target="_blank" class="inline-block mt-2 text-xs font-semibold text-[#7138D8] hover:underline">View Attachment</a>
+          <a href="<?= e(app_root_prefix() . $m['attachment_path']) ?>" target="_blank" class="inline-block mt-2 text-xs font-semibold text-[#7138D8] hover:underline">View Attachment</a>
         <?php endif; ?>
       </div>
     <?php endforeach; ?>

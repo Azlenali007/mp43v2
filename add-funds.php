@@ -18,6 +18,7 @@ $pageTitle = 'Add Funds';
 require __DIR__ . '/includes/user-header.php';
 ?>
 <div class="space-y-6" x-data='{
+  apiBase: <?= json_encode(app_root_prefix()) ?>,
   activeMethod: <?= json_encode($defaultTab) ?>,
   rzpAmount: "",
   rzpLoading: false,
@@ -33,7 +34,7 @@ require __DIR__ . '/includes/user-header.php';
     }
     this.rzpLoading = true;
     try {
-      const res = await window.SMMApp.postJson("api/razorpay-create-order.php", { amount: amt });
+      const res = await window.SMMApp.postJson(this.apiBase + "api/razorpay-create-order.php", { amount: amt });
       if (!res.ok) {
         this.rzpFeedback = { ok: false, message: res.message || "Unable to create Razorpay order." };
         this.rzpLoading = false;
@@ -54,7 +55,7 @@ require __DIR__ . '/includes/user-header.php';
         theme: { color: "#7138D8" },
         handler: async (response) => {
           this.rzpFeedback = { ok: true, message: "Verifying payment signature with server..." };
-          const verifyRes = await window.SMMApp.postJson("api/razorpay-verify.php", {
+          const verifyRes = await window.SMMApp.postJson(this.apiBase + "api/razorpay-verify.php", {
             payment_id: res.payment_db_id,
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
@@ -67,7 +68,7 @@ require __DIR__ . '/includes/user-header.php';
         },
         modal: {
           ondismiss: async () => {
-            await window.SMMApp.postJson("api/payment-request.php", { action: "cancel_rzp", payment_id: res.payment_db_id });
+            await window.SMMApp.postJson(this.apiBase + "api/payment-request.php", { action: "cancel_rzp", payment_id: res.payment_db_id });
             this.rzpFeedback = { ok: false, message: "Payment checkout was cancelled." };
             this.rzpLoading = false;
           }
@@ -75,7 +76,7 @@ require __DIR__ . '/includes/user-header.php';
       };
       const rzp = new Razorpay(options);
       rzp.on("payment.failed", async (resp) => {
-        await window.SMMApp.postJson("api/payment-request.php", {
+        await window.SMMApp.postJson(this.apiBase + "api/payment-request.php", {
           action: "fail_rzp",
           payment_id: res.payment_db_id,
           reason: resp.error?.description || "Payment failed"
@@ -95,7 +96,7 @@ require __DIR__ . '/includes/user-header.php';
     this.manualLoading = true;
     try {
       const fd = new FormData(ev.target);
-      const res = await window.SMMApp.postForm("api/manual-payment.php", fd);
+      const res = await window.SMMApp.postForm(this.apiBase + "api/manual-payment.php", fd);
       this.manualFeedback = res;
       if (res.ok) {
         ev.target.reset();
@@ -186,7 +187,7 @@ require __DIR__ . '/includes/user-header.php';
           <h3 class="text-base font-bold text-[#151515]">Payment Details</h3>
           <?php if ($man['qr_code_path'] !== ''): ?>
             <div class="p-3 rounded-xl border border-slate-200 bg-slate-50 inline-block">
-              <img src="<?= e($man['qr_code_path']) ?>" alt="Payment QR Code" class="w-44 h-44 object-contain rounded-lg">
+              <img src="<?= e(app_root_prefix() . $man['qr_code_path']) ?>" alt="Payment QR Code" class="w-44 h-44 object-contain rounded-lg">
             </div>
           <?php endif; ?>
 

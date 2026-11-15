@@ -11,7 +11,7 @@ A complete, standalone Core PHP 8.2+ and MySQL 8+ Social Media Marketing (SMM) P
 ## cPanel Installation Guide
 
 1. **Upload Files**
-   - Upload the contents of `smm-panel/` directly into your domain's document root (`public_html/` or a subfolder).
+   - Upload all project files and folders (`index.php`, `admin/`, `user/`, `api/`, `config/`, `includes/`, `classes/`, `install/`, `cron/`, `assets/`, `uploads/`, `database/`, `storage/`, `.htaccess`) directly into your domain's document root (`public_html/`).
    - Ensure `config/database.local.php`, `config/app.secret.php`, and `config/installed.lock` do **not** exist before running a fresh installation.
 
 2. **Create MySQL Database**

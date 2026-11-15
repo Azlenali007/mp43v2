@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-$docRoot = realpath(__DIR__ . '/smm-panel');
+$docRoot = realpath(__DIR__);
 $uriPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 $decodedPath = rawurldecode($uriPath);
 
@@ -12,15 +12,15 @@ if (preg_match('#^/(config|database|storage|classes|includes)(/|$)#i', $decodedP
     return true;
 }
 
-// Block PHP execution inside uploads directory
-if (preg_match('#^/uploads/.*\.php$#i', $decodedPath)) {
+// Block internal workspace/dev-launcher files and dotfiles
+if (preg_match('#^/(preview-router\.php|package\.json|metadata\.json)$#i', $decodedPath) || preg_match('#/\.#', $decodedPath)) {
     http_response_code(403);
     echo '403 Forbidden';
     return true;
 }
 
-// Block dotfiles
-if (preg_match('#/\.#', $decodedPath)) {
+// Block PHP execution inside uploads directory
+if (preg_match('#^/uploads/.*\.php$#i', $decodedPath)) {
     http_response_code(403);
     echo '403 Forbidden';
     return true;
@@ -60,10 +60,9 @@ if ($realTarget !== false && str_starts_with($realTarget, $docRoot) && is_file($
         require $realTarget;
         return true;
     }
-    return false; // Let PHP built-in server serve static assets
+    return false;
 }
 
-// Clean extensionless routes fallback (e.g., /login -> /login.php)
 $phpFallback = realpath($target . '.php');
 if ($phpFallback !== false && str_starts_with($phpFallback, $docRoot) && is_file($phpFallback)) {
     chdir(dirname($phpFallback));
