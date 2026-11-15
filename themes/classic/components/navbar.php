@@ -31,7 +31,7 @@ $displayCurrency = $displayCurrency ?? Currency::getUserDisplay($loggedUser);
       <?php if (function_exists('is_otp_public_enabled') && is_otp_public_enabled()): ?>
         <div class="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs font-bold">
           <a href="<?= e($rp) ?>index.php" class="px-3 py-1.5 rounded-lg bg-[#7138D8] text-white shadow-sm">SMM PANEL</a>
-          <a href="<?= e($rp) ?>user/otp-dashboard.php" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">OTP MARKETPLACE</a>
+          <a href="<?= e($rp) ?>otp/dashboard.php" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">OTP MARKETPLACE</a>
         </div>
       <?php endif; ?>
     </nav>

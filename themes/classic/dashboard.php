@@ -35,7 +35,7 @@ ob_start();
       <h2 class="text-lg font-extrabold tracking-tight">Looking for phone numbers & SMS verification?</h2>
       <p class="text-xs text-purple-200">Access our independent OTP marketplace using your existing SMM wallet and login.</p>
     </div>
-    <a href="<?= e($rp) ?>user/otp-dashboard.php" class="px-6 py-3 rounded-xl bg-white text-purple-950 font-extrabold text-xs hover:bg-purple-50 transition shadow-md whitespace-nowrap shrink-0 flex items-center gap-2">
+    <a href="<?= e($rp) ?>otp/dashboard.php" class="px-6 py-3 rounded-xl bg-white text-purple-950 font-extrabold text-xs hover:bg-purple-50 transition shadow-md whitespace-nowrap shrink-0 flex items-center gap-2">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="w-4 h-4"><path d="M12 5v14M5 12h14"/></svg>
       NEED OTP? CLICK HERE
     </a>

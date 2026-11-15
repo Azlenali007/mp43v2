@@ -92,7 +92,7 @@ require __DIR__ . '/../includes/admin-header.php';
       <h2 class="text-xl font-extrabold tracking-tight">OTP Marketplace Integration</h2>
       <p class="text-xs text-purple-200">Manage API settings, sync SMS verification services, configure pricing markup and monitor OTP orders.</p>
     </div>
-    <a href="otp-dashboard.php" class="px-6 py-3 rounded-xl bg-white text-purple-950 font-extrabold text-xs hover:bg-purple-50 transition shadow-md whitespace-nowrap shrink-0">
+    <a href="<?= e(app_root_prefix()) ?>otp/admin/dashboard.php" class="px-6 py-3 rounded-xl bg-white text-purple-950 font-extrabold text-xs hover:bg-purple-50 transition shadow-md whitespace-nowrap shrink-0">
       MANAGE OTP MARKETPLACE
     </a>
   </div>

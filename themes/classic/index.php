@@ -34,7 +34,7 @@ ob_start();
           </a>
         <?php endif; ?>
         <?php if (function_exists('is_otp_public_enabled') && is_otp_public_enabled()): ?>
-          <a href="<?= e($rp) ?>user/otp-dashboard.php" class="px-6 py-3 rounded-xl bg-gradient-to-r from-purple-700 to-indigo-700 text-white text-sm font-bold hover:from-purple-600 hover:to-indigo-600 transition shadow-md flex items-center gap-2">
+          <a href="<?= e($rp) ?>otp/dashboard.php" class="px-6 py-3 rounded-xl bg-gradient-to-r from-purple-700 to-indigo-700 text-white text-sm font-bold hover:from-purple-600 hover:to-indigo-600 transition shadow-md flex items-center gap-2">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="w-4 h-4"><path d="M12 5v14M5 12h14"/></svg>
             NEED OTP? CLICK HERE
           </a>
